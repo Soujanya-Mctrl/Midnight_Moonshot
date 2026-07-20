@@ -19,6 +19,7 @@ services:
 
   indexer:
     image: 'midnightntwrk/indexer-standalone:4.3.3'
+    restart: on-failure
     ports:
       - '127.0.0.1:8088:8088'
     environment:
@@ -33,10 +34,10 @@ services:
       APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'e2e-test-dummy-id'
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 10s
+      retries: 30
+      start_period: 20s
     depends_on:
       node:
         condition: service_healthy
