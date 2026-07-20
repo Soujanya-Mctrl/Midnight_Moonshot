@@ -1,0 +1,25 @@
+# Node & Build
+/node_modules
+/contracts/managed
+/managed
+/logs
+/dist
+/.midnight-expert
+/midnight-level-db
+
+# Secret files & testnet wallet state
+.env
+.env.local
+.env.preview
+.env.preprod
+.envrc
+.midnight-seed
+.midnight-state.json
+.midnight-wallet-state
+*.seed
+*.key
+*.pem
+
+# IDE & System
+.DS_Store
+Thumbs.db

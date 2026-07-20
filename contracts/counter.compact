@@ -1,0 +1,22 @@
+// =============================================================================
+// Counter Contract - Privacy & Public State Model
+// =============================================================================
+// PUBLIC STATE:
+// - `count`: Uint<32> stored on-chain in the public ledger, visible to everyone.
+//
+// PRIVATE WITNESS & ZERO-KNOWLEDGE:
+// - `secretIncrement`: Private witness circuit input passed off-chain.
+//   It remains zero-knowledge private on the client machine.
+// - `disclose()`: Deliberately called to convert the private witness into an
+//   on-chain ledger update, revealing only the resulting public counter step.
+// =============================================================================
+
+pragma language_version 0.23;
+
+export ledger count: Uint<32>;
+
+export circuit incrementBy(secretIncrement: Uint<32>): [] {
+  // Circuit inputs are private witnesses by default.
+  // We deliberately disclose the private increment value to update public ledger state.
+  count = (count + disclose(secretIncrement)) as Uint<32>;
+}
