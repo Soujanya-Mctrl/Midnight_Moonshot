@@ -3,17 +3,18 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "noEmit": true,
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["src/**/*.ts", "contract/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "contracts/**/*.ts"]
 }

@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "vite frontend",
+    "dev": "vite",
     "compile": "compact compile contracts/hello-world.compact contracts/managed/hello-world",
     "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
     "test:local": "MIDNIGHT_NETWORK=local yarn test",
@@ -48,6 +48,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
+    "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
   },
