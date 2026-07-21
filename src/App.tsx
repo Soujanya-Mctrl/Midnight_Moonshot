@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Terminal, Cpu, Database, Activity } from 'lucide-react';
 import { WalletConnect } from './components/WalletConnect';
 import { CircuitCall } from './components/CircuitCall';
-import '../frontend/src/App.css';
+import './App.css';
 
 interface TxRecord {
   hash: string;
