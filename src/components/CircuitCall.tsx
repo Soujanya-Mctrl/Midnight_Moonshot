@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, Cpu, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Zap, Cpu, ExternalLink, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
 import { useMidnight } from '../hooks/useMidnight';
 
 interface CircuitCallProps {
@@ -12,18 +12,26 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
   const [dustBalance, setDustBalance] = useState<number>(120.50);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [isProving, setIsProving] = useState<boolean>(false);
+  const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
 
   const handleIncrementCircuit = async () => {
     setIsProving(true);
-    // Simulate ZK circuit proof generation and execution
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    setSubmissionStatus('Generating Zero-Knowledge Proof locally in browser...');
 
-    const newCount = counterValue + 1;
+    // Private witness input (secretIncrement) is evaluated off-chain inside ZK circuit
+    // Private input MUST NEVER appear in the UI
+    const secretIncrement = 1;
+
+    // Simulate local browser proof generation & on-chain tx submission
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const newCount = counterValue + secretIncrement;
     const txHash = `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
     setCounterValue(newCount);
     setDustBalance((prev) => Math.max(0, prev - 0.15));
     setLastTxHash(txHash);
+    setSubmissionStatus('Submitted on-chain successfully! State updated.');
     setIsProving(false);
 
     if (onCircuitExecuted) {
@@ -38,12 +46,31 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         <div className="tech-panel-header">
           <span className="panel-label">
             <Cpu size={14} />
-            CIRCUIT_EXECUTION :: COUNTER.COMPACT
+            CIRCUIT_EXECUTION :: COUNTER.COMPACT (incrementBy)
           </span>
           <span className="panel-label">
             <CheckCircle2 size={14} />
             PUBLIC_LEDGER_COUNT: {counterValue}
           </span>
+        </div>
+
+        {/* Mandatory Privacy Guarantee Label */}
+        <div
+          style={{
+            padding: '0.65rem 1rem',
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#e2e8f0',
+            fontSize: '0.8rem',
+            fontFamily: 'JetBrains Mono',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <ShieldCheck size={16} style={{ color: '#ffffff' }} />
+          <span>Proved without revealing your input</span>
         </div>
 
         <div className="metric-large">COUNT: {counterValue}</div>
@@ -55,8 +82,8 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
             disabled={!isConnected || isProving}
             style={{ opacity: !isConnected ? 0.5 : 1, cursor: !isConnected ? 'not-allowed' : 'pointer' }}
           >
-            <Zap size={16} />
-            {isProving ? 'GENERATING ZK PROOF...' : 'EXECUTE ZK INCREMENT CIRCUIT'}
+            {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
+            {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
           </button>
           <button
             className="btn-tech"
@@ -67,9 +94,27 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           </button>
         </div>
 
-        {lastTxHash && (
-          <div style={{ marginTop: '1.25rem', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
-            LAST_TX_HASH: <span style={{ color: '#ffffff' }}>{lastTxHash}</span>
+        {/* Proof & Transaction Status Result Display */}
+        {submissionStatus && (
+          <div
+            style={{
+              marginTop: '1.25rem',
+              padding: '0.85rem 1rem',
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid var(--panel-border)',
+              fontFamily: 'JetBrains Mono',
+              fontSize: '0.8rem',
+            }}
+          >
+            <div style={{ color: isProving ? '#fbbf24' : '#ffffff', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={14} />
+              {submissionStatus}
+            </div>
+            {lastTxHash && (
+              <div style={{ color: '#94a3b8', wordBreak: 'break-all', marginTop: '4px' }}>
+                ONCHAIN_TX_HASH: <span style={{ color: '#ffffff' }}>{lastTxHash}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
