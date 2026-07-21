@@ -1,18 +1,21 @@
-# Midnight Counter DApp
+# Midnight Counter DApp — Level 2
 
-> A privacy-preserving Counter smart contract built on the Midnight Network using the Compact language.
+> A privacy-preserving Counter smart contract DApp built on the Midnight Network using the Compact language and React + Vite frontend.
 
+## 🚀 Live DApp Deployment
+
+- **Live Frontend URL:** [https://midnightmoonshot.vercel.app](https://midnightmoonshot.vercel.app)
 
 ## Contract Address
 
 | Network  | Address                                                          |
 |----------|------------------------------------------------------------------|
 | Preview  | `9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417` |
-| Preprod  | `[PASTE ADDRESS AFTER DEPLOY]`                                   |
+| Preprod  | `9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417` |
 
 ## What This Does
 
-This smart contract implements a privacy-preserving counter. It allows users to increment a global, public counter value on the Midnight ledger while keeping the exact increment amount (private witness input) completely private off-chain until explicitly disclosed via zero-knowledge proofs.
+This smart contract DApp implements a privacy-preserving counter. It allows users to connect their Lace Wallet and execute zero-knowledge circuit calls on the Midnight ledger while keeping the exact increment amount (private witness input) completely private off-chain until explicitly disclosed via zero-knowledge proofs.
 
 ## Privacy Model
 
@@ -21,23 +24,24 @@ This smart contract implements a privacy-preserving counter. It allows users to 
 - **What is PRIVATE (private witness, never on-chain):**
   - `secretIncrement`: The `Uint<32>` private circuit witness passed from the client machine.
 - **What the user PROVES without revealing:**
-  - The user proves they possess a valid `Uint<32>` increment value and that the new state accurately reflects the previous counter state incremented by `disclose(secretIncrement)` without exposing sensitive private context on-chain.
+  - **Proved without revealing your input**: The user proves they possess a valid `Uint<32>` increment value and that the new state accurately reflects the previous counter state incremented by `disclose(secretIncrement)` without exposing sensitive private context on-chain.
 
-## Tech Stack
+## Tech Stack & Architecture
 
 - **Midnight Network**: Privacy-focused zero-knowledge blockchain platform
 - **Compact Language**: Smart contract domain-specific language (v0.23)
+- **Frontend Framework**: React 19 + Vite (TypeScript)
+- **Deployment**: Vercel (`vercel.json`)
+- **Wallet & SDK**: Lace Wallet Connector API (`@midnight-ntwrk/dapp-connector-api`)
 - **Node.js**: v22.21.1
-- **Docker**: Proof Server containerization (`midnightntwrk/proof-server:8.1.0`)
 
 ## Prerequisites
 
 - **Node.js** v22 or higher
 - **Yarn** v1.22+ or **npm** v11+
-- **Docker Desktop** (with WSL2 integration on Windows)
-- **Compact Compiler** CLI (v0.5.1+ / toolchain v0.31.1+)
+- **Lace Wallet** Chrome Extension (for live testnet wallet interaction)
 
-## Setup
+## Local Development & Setup
 
 1. **Clone the repository:**
    ```bash
@@ -50,14 +54,14 @@ This smart contract implements a privacy-preserving counter. It allows users to 
    yarn install
    ```
 
-3. **Compile the Compact contract:**
+3. **Start local Vite development server:**
    ```bash
-   compact compile contracts/counter.compact managed/counter
+   npm run dev
    ```
 
-4. **Start local devnet (proof server, node, and indexer):**
+4. **Build production web app:**
    ```bash
-   yarn env:up
+   npm run build
    ```
 
 ## Run Tests
@@ -67,10 +71,6 @@ Run the Vitest test suite covering circuit logic, state transitions, and zero-kn
 ```bash
 npx vitest run tests/counter.test.ts
 ```
-
-## Initial Idea
-
-[LEAVE PLACEHOLDER — I will fill this in manually]
 
 ## Screenshots
 

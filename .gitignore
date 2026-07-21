@@ -1,4 +1,4 @@
-# Node & Build
+# Node & Build Outputs
 /node_modules
 /contracts/managed
 /managed
@@ -7,11 +7,12 @@
 /.midnight-expert
 /midnight-level-db
 
-# Secret files & testnet wallet state
+# Secret files, keys, seeds & wallet state (STRICT SECURITY)
 .env
-.env.local
-.env.preview
-.env.preprod
+.env.*
+!.env.example
+!.env.preview.example
+!.env.preprod.example
 .envrc
 .midnight-seed
 .midnight-state.json
@@ -20,6 +21,7 @@
 *.key
 *.pem
 
-# IDE & System
+# Vercel & IDE
+.vercel
 .DS_Store
 Thumbs.db
