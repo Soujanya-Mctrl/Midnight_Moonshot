@@ -15,10 +15,11 @@ export interface MidnightHookState {
   disconnectWallet: () => void;
   clearError: () => void;
   fetchLiveContractState: () => Promise<void>;
+  connectedAPI: any;
 }
 
 const CONTRACT_ADDRESS = '9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417';
-const INDEXER_URL = 'https://indexer.preview.midnight.network/api/v4/graphql';
+const INDEXER_URL = 'https://indexer.preprod.midnight.network/api/v4/graphql';
 
 export function useMidnight(): MidnightHookState {
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -30,9 +31,9 @@ export function useMidnight(): MidnightHookState {
   const [isLoadingState, setIsLoadingState] = useState<boolean>(false);
   const [tnightBalance, setTnightBalance] = useState<string>('0.00');
   const [dustBalance, setDustBalance] = useState<string>('0.00');
-  const [network, setNetwork] = useState<string>('Preview / Preprod Testnet');
+  const [network, setNetwork] = useState<string>('Preview Testnet');
 
-  // Helper to locate installed Midnight provider in window.midnight
+  // Locate injected window.midnight provider
   const getMidnightWalletProvider = (): { id: string; provider: any } | null => {
     if (typeof window === 'undefined') return null;
     const win = window as any;
@@ -40,8 +41,9 @@ export function useMidnight(): MidnightHookState {
 
     const walletKeys = Object.keys(win.midnight);
     for (const key of walletKeys) {
-      if (win.midnight[key]?.connect || win.midnight[key]?.enable) {
-        return { id: key, provider: win.midnight[key] };
+      const p = win.midnight[key];
+      if (p && (typeof p.connect === 'function' || typeof p.enable === 'function')) {
+        return { id: key, provider: p };
       }
     }
     return null;
@@ -94,10 +96,86 @@ export function useMidnight(): MidnightHookState {
         }
       }
     } catch (e) {
-      console.warn('Indexer state fetch fallback:', e);
+      console.warn('Indexer query error:', e);
     } finally {
       setIsLoadingState(false);
     }
+  };
+
+  const [connectedAPI, setConnectedAPI] = useState<any>(null);
+
+  const extractAddressAndState = async (api: any): Promise<{ addr: string | null; tnight: string; dust: string }> => {
+    let addr: string | null = null;
+    let tnight = '0.00';
+    let dust = '0.00';
+
+    if (!api) return { addr, tnight, dust };
+
+    console.log('Inspecting connected Lace API object:', api);
+
+    // 1. Try DApp Connector API methods
+    try {
+      if (typeof api.getUnshieldedAddress === 'function') {
+        const addrRes = await api.getUnshieldedAddress();
+        addr = typeof addrRes === 'string' ? addrRes : (addrRes?.unshieldedAddress || addrRes);
+      } else if (typeof api.getShieldedAddresses === 'function') {
+        const addrs = await api.getShieldedAddresses();
+        addr = Array.isArray(addrs) ? addrs[0] : (addrs?.shieldedAddress || addrs);
+      }
+    } catch (e) {
+      console.warn('Direct address method call error:', e);
+    }
+
+    // 2. Try state() observable / promise
+    if (!addr && typeof api.state === 'function') {
+      try {
+        const stateRes = await api.state();
+        if (stateRes) {
+          if (typeof stateRes.subscribe === 'function') {
+            await new Promise<void>((resolve) => {
+              stateRes.subscribe((s: any) => {
+                if (s?.address) addr = s.address;
+                else if (s?.unshieldedAddress) addr = s.unshieldedAddress;
+                else if (s?.coinPublicKey) addr = `mn_addr1${s.coinPublicKey}`;
+                resolve();
+              });
+            });
+          } else {
+            addr = stateRes.address || stateRes.unshieldedAddress || (stateRes.coinPublicKey ? `mn_addr1${stateRes.coinPublicKey}` : null);
+          }
+        }
+      } catch (e) {
+        console.warn('State call error:', e);
+      }
+    }
+
+    // 3. Check direct object properties
+    if (!addr) {
+      addr =
+        api.address ||
+        api.unshieldedAddress ||
+        (Array.isArray(api.accounts) ? api.accounts[0] : null);
+    }
+
+    // 4. Try balance methods
+    try {
+      if (typeof api.getUnshieldedBalances === 'function') {
+        const b = await api.getUnshieldedBalances();
+        if (b) tnight = typeof b === 'object' ? String(Object.values(b)[0] || '0.00') : String(b);
+      }
+      if (typeof api.getDustBalance === 'function') {
+        const d = await api.getDustBalance();
+        if (d && typeof d === 'object' && d.balance !== undefined) {
+           dust = String(d.balance);
+        } else if (d !== undefined && d !== null) {
+           dust = String(d);
+        }
+      }
+    } catch (e) {
+      console.warn('Balance query error:', e);
+    }
+
+    return { addr, tnight, dust };
   };
 
   const connectWallet = async () => {
@@ -109,102 +187,46 @@ export function useMidnight(): MidnightHookState {
 
       if (!walletInfo) {
         throw new Error(
-          'Lace Wallet extension is not detected in browser. Make sure the Lace Midnight extension is installed and active.'
+          'Lace Wallet extension is not detected in your browser. Make sure the Lace Midnight extension is installed and active.'
         );
       }
 
-      console.log(`Connecting to Midnight Wallet (${walletInfo.id})...`, walletInfo.provider);
+      console.log(`Attempting connection with Midnight Wallet (${walletInfo.id})...`, walletInfo.provider);
 
-      // Multi-network attempt strategy to avoid "Network ID mismatch"
-      let connectedAPI: any = null;
       const provider = walletInfo.provider;
+      let api: any = null;
 
-      const connectionAttempts = [
-        () => (typeof provider.enable === 'function' ? provider.enable() : null),
-        () => (typeof provider.connect === 'function' ? provider.connect() : null),
-        () => (typeof provider.connect === 'function' ? provider.connect('preprod') : null),
-        () => (typeof provider.connect === 'function' ? provider.connect('preview') : null),
-        () => (typeof provider.connect === 'function' ? provider.connect('undeployed') : null),
-      ];
-
-      let lastAttemptError: any = null;
-      for (const attempt of connectionAttempts) {
-        try {
-          connectedAPI = await attempt();
-          if (connectedAPI) break;
-        } catch (attemptErr: any) {
-          lastAttemptError = attemptErr;
-          console.warn('Connection attempt info:', attemptErr?.message);
+      try {
+        if (typeof provider.enable === 'function') {
+          api = await provider.enable();
+        } else if (typeof provider.connect === 'function') {
+          api = await provider.connect();
         }
+      } catch (err: any) {
+        throw new Error(err?.message || 'Lace Wallet connection request was rejected or failed.');
       }
 
-      if (!connectedAPI) {
-        if (lastAttemptError?.message?.includes('Network ID mismatch')) {
-          throw new Error(
-            'Network ID Mismatch: Your Lace Wallet is set to a different network. Please switch Lace Wallet to Preview or Preprod network.'
-          );
-        }
-        throw new Error(lastAttemptError?.message || 'Wallet connection declined by user.');
+      if (!api) {
+        throw new Error('Lace Wallet API is unavailable.');
       }
 
-      console.log('Successfully connected Lace API handle:', connectedAPI);
+      const { addr, tnight, dust } = await extractAddressAndState(api);
 
-      // Query actual unshielded address from connected API
-      let userAddr: string | null = null;
-      if (typeof connectedAPI.getUnshieldedAddress === 'function') {
-        userAddr = await connectedAPI.getUnshieldedAddress();
-      } else if (typeof connectedAPI.getShieldedAddresses === 'function') {
-        const addresses = await connectedAPI.getShieldedAddresses();
-        userAddr = Array.isArray(addresses) ? addresses[0] : addresses;
-      } else if (connectedAPI.address) {
-        userAddr = connectedAPI.address;
+      if (!addr) {
+        throw new Error('Lace Wallet connected, but no address was returned by your wallet extension.');
       }
 
-      // Query service config if available
-      if (typeof connectedAPI.getConfiguration === 'function') {
-        try {
-          const cfg = await connectedAPI.getConfiguration();
-          if (cfg?.networkId) {
-            setNetwork(cfg.networkId.toUpperCase());
-          }
-        } catch {}
-      }
-
-      // Query actual balances
-      let unshieldedBal = '250.00';
-      let dustBal = '120.50';
-
-      if (typeof connectedAPI.getUnshieldedBalances === 'function') {
-        try {
-          const balObj = await connectedAPI.getUnshieldedBalances();
-          if (balObj && typeof balObj === 'object') {
-            const rawVal = Object.values(balObj)[0];
-            if (rawVal !== undefined) unshieldedBal = String(rawVal);
-          }
-        } catch {}
-      }
-      if (typeof connectedAPI.getDustBalance === 'function') {
-        try {
-          const d = await connectedAPI.getDustBalance();
-          if (d !== undefined && d !== null) dustBal = String(d);
-        } catch {}
-      }
-
+      setConnectedAPI(api);
       setIsConnected(true);
-      setAddress(userAddr || 'mn_addr1wjdc8vftnmg7vxk07f6u85rfjgk758h7yuat7308fcrwwknav96s6cy43p');
-      setTnightBalance(unshieldedBal);
-      setDustBalance(dustBal);
+      setAddress(addr);
+      setTnightBalance(tnight);
+      setDustBalance(dust);
     } catch (err: any) {
-      console.error('Wallet Connection Error:', err);
+      console.error('Wallet connection error:', err);
       setIsConnected(false);
       setAddress(null);
-      if (err?.message?.includes('Network ID Mismatch')) {
-        setError(err.message);
-      } else if (err?.message?.includes('declined') || err?.message?.includes('rejected')) {
-        setError('Connection Request Rejected: You declined the Lace Wallet connection prompt.');
-      } else {
-        setError(err?.message || 'Failed to connect Lace Wallet.');
-      }
+      setConnectedAPI(null);
+      setError(err?.message || 'Failed to connect Lace Wallet.');
     } finally {
       setIsConnecting(false);
     }
@@ -213,6 +235,7 @@ export function useMidnight(): MidnightHookState {
   const disconnectWallet = () => {
     setIsConnected(false);
     setAddress(null);
+    setConnectedAPI(null);
     setError(null);
     setTnightBalance('0.00');
     setDustBalance('0.00');
@@ -237,5 +260,6 @@ export function useMidnight(): MidnightHookState {
     disconnectWallet,
     clearError,
     fetchLiveContractState,
+    connectedAPI,
   };
 }

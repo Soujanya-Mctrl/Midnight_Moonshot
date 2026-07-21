@@ -9,7 +9,7 @@ interface TxRecord {
   hash: string;
   circuit: string;
   witness: string;
-  block: number;
+  block: number | string;
   dustFee: string;
   status: string;
   time: string;
@@ -17,10 +17,12 @@ interface TxRecord {
 
 export function App() {
   const { isConnected, address, counterState } = useMidnight();
-  const [blockHeight, setBlockHeight] = useState<number>(184920);
+  const [blockHeight, setBlockHeight] = useState<number | string>('Syncing...');
 
   const [terminalLogs, setTerminalLogs] = useState<Array<{ time: string; tag: string; msg: string }>>([]);
   const [onChainTxs, setOnChainTxs] = useState<TxRecord[]>([]);
+
+
 
   useEffect(() => {
     const timeStr = new Date().toTimeString().split(' ')[0];
@@ -44,7 +46,7 @@ export function App() {
 
   const handleCircuitExecuted = (txHash: string, newCount: number) => {
     const timeStr = new Date().toTimeString().split(' ')[0];
-    const newHeight = blockHeight + 1;
+    const newHeight = typeof blockHeight === 'number' ? blockHeight + 1 : 'Pending...';
     setBlockHeight(newHeight);
 
     setTerminalLogs((prev) => [
