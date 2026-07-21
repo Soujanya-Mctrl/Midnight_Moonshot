@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, ShieldCheck, ChevronRight, LogOut, AlertTriangle, XCircle } from 'lucide-react';
+import { Wallet, ShieldCheck, ChevronRight, LogOut, AlertTriangle, XCircle, ExternalLink } from 'lucide-react';
 import { useMidnight } from '../hooks/useMidnight';
 
 export const WalletConnect: React.FC = () => {
@@ -46,30 +46,45 @@ export const WalletConnect: React.FC = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={14} />
-            {error}
+            <span>{error}</span>
           </div>
-          <XCircle size={14} style={{ cursor: 'pointer' }} onClick={clearError} />
+          <XCircle size={14} style={{ cursor: 'pointer', minWidth: '14px' }} onClick={clearError} />
         </div>
       )}
 
-      {/* Wallet Extension Warning */}
-      {!isLaceInstalled && !isConnected && (
+      {/* Wallet Extension Missing Alert + Install Button */}
+      {!isLaceInstalled && !isConnected && !error && (
         <div
           style={{
-            padding: '0.65rem 0.85rem',
+            padding: '0.85rem 1rem',
             background: 'rgba(245, 158, 11, 0.08)',
             border: '1px solid rgba(245, 158, 11, 0.25)',
             color: '#fbbf24',
             fontSize: '0.75rem',
             fontFamily: 'JetBrains Mono',
             marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
           }}
         >
-          <AlertTriangle size={14} />
-          Lace Wallet extension not detected in browser. (Running in Demo Mode)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <AlertTriangle size={14} />
+            <span>Lace Wallet extension not detected in browser.</span>
+          </div>
+          <a
+            href="https://chromewebstore.google.com/detail/lace/gafhhkghbfjjbfnlhbdpkhbedigapahu"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: '#ffffff',
+              textDecoration: 'underline',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 'bold',
+            }}
+          >
+            <ExternalLink size={12} />
+            Install Lace Wallet Extension
+          </a>
         </div>
       )}
 
@@ -90,11 +105,7 @@ export const WalletConnect: React.FC = () => {
         {!isConnected ? (
           <button className="btn-tech primary" onClick={connectWallet} disabled={isConnecting}>
             <Wallet size={16} />
-            {isConnecting
-              ? 'CONNECTING TO LACE...'
-              : isLaceInstalled
-              ? 'CONNECT LACE WALLET'
-              : 'CONNECT LACE WALLET (DEMO)'}
+            {isConnecting ? 'CONNECTING TO LACE...' : 'CONNECT LACE WALLET'}
             <ChevronRight size={16} />
           </button>
         ) : (

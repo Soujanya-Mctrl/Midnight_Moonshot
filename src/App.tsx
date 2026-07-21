@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Terminal, Cpu, Database, Activity } from 'lucide-react';
 import { WalletConnect } from './components/WalletConnect';
 import { CircuitCall } from './components/CircuitCall';
+import { useMidnight } from './hooks/useMidnight';
 import './App.css';
 
 interface TxRecord {
@@ -15,35 +16,31 @@ interface TxRecord {
 }
 
 export function App() {
+  const { isConnected, address, counterState } = useMidnight();
   const [blockHeight, setBlockHeight] = useState<number>(184920);
 
-  const [terminalLogs, setTerminalLogs] = useState<Array<{ time: string; tag: string; msg: string }>>([
-    { time: '16:10:02', tag: '[SYS_INIT]', msg: 'COMPACT_RUNTIME v0.23 initialized' },
-    { time: '16:10:05', tag: '[NETWORK]', msg: 'Connected to Midnight Preview Testnet' },
-    { time: '16:10:11', tag: '[CONTRACT]', msg: 'Counter state resolved: count = 42' },
-    { time: '16:10:14', tag: '[INDEXER]', msg: 'Syncing chain blocks at height #184920' },
-  ]);
+  const [terminalLogs, setTerminalLogs] = useState<Array<{ time: string; tag: string; msg: string }>>([]);
+  const [onChainTxs, setOnChainTxs] = useState<TxRecord[]>([]);
 
-  const [onChainTxs, setOnChainTxs] = useState<TxRecord[]>([
-    {
-      hash: '0x32c9025a256d6785b91c5d7181df08a160dadad99f46352f43fb77a6d6da4c48',
-      circuit: 'counter (genesis)',
-      witness: 'Public Setup',
-      block: 184915,
-      dustFee: '0.00 DUST',
-      status: 'VERIFIED',
-      time: '12m ago',
-    },
-    {
-      hash: '0x1b49cb68465b23457496a5a2a6e7fae484595216db93d81e0ccd43c161bae6de',
-      circuit: 'incrementBy',
-      witness: 'Disclosed Witness',
-      block: 184919,
-      dustFee: '0.15 DUST',
-      status: 'VERIFIED',
-      time: '3m ago',
-    },
-  ]);
+  useEffect(() => {
+    const timeStr = new Date().toTimeString().split(' ')[0];
+    setTerminalLogs([
+      { time: timeStr, tag: '[SYS_INIT]', msg: 'Compact Runtime v0.23 initialized' },
+      { time: timeStr, tag: '[NETWORK]', msg: 'Connected to Midnight Preview Testnet' },
+      { time: timeStr, tag: '[INDEXER]', msg: `Querying state for 9a6287e3...4c48` },
+      { time: timeStr, tag: '[CONTRACT]', msg: `Live count state resolved: ${counterState}` },
+    ]);
+  }, [counterState]);
+
+  useEffect(() => {
+    if (isConnected && address) {
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      setTerminalLogs((prev) => [
+        ...prev,
+        { time: timeStr, tag: '[WALLET]', msg: `Lace wallet connected: ${address.substring(0, 18)}...` },
+      ]);
+    }
+  }, [isConnected, address]);
 
   const handleCircuitExecuted = (txHash: string, newCount: number) => {
     const timeStr = new Date().toTimeString().split(' ')[0];
@@ -149,38 +146,52 @@ export function App() {
           </span>
         </div>
 
-        <table className="explorer-table">
-          <thead>
-            <tr>
-              <th>TRANSACTION HASH</th>
-              <th>CIRCUIT / ACTION</th>
-              <th>WITNESS MODEL</th>
-              <th>BLOCK</th>
-              <th>FEE</th>
-              <th>PROOF STATUS</th>
-              <th>TIMESTAMP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {onChainTxs.map((tx, idx) => (
-              <tr key={idx}>
-                <td className="tx-hash-code">
-                  {tx.hash.substring(0, 16)}...{tx.hash.substring(tx.hash.length - 8)}
-                </td>
-                <td className="tx-circuit-name">{tx.circuit}</td>
-                <td>
-                  <span className="witness-badge">{tx.witness}</span>
-                </td>
-                <td className="mono-val">#{tx.block}</td>
-                <td className="mono-val">{tx.dustFee}</td>
-                <td>
-                  <span className="status-badge-ok">[VERIFIED_OK]</span>
-                </td>
-                <td className="mono-time">{tx.time}</td>
+        {onChainTxs.length === 0 ? (
+          <div
+            style={{
+              padding: '1.5rem',
+              textAlign: 'center',
+              color: '#94a3b8',
+              fontFamily: 'JetBrains Mono',
+              fontSize: '0.85rem',
+            }}
+          >
+            NO ON-CHAIN TRANSACTIONS SUBMITTED IN THIS SESSION. CONNECT LACE WALLET AND CALL CIRCUIT ABOVE.
+          </div>
+        ) : (
+          <table className="explorer-table">
+            <thead>
+              <tr>
+                <th>TRANSACTION HASH</th>
+                <th>CIRCUIT / ACTION</th>
+                <th>WITNESS MODEL</th>
+                <th>BLOCK</th>
+                <th>FEE</th>
+                <th>PROOF STATUS</th>
+                <th>TIMESTAMP</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {onChainTxs.map((tx, idx) => (
+                <tr key={idx}>
+                  <td className="tx-hash-code">
+                    {tx.hash.substring(0, 16)}...{tx.hash.substring(tx.hash.length - 8)}
+                  </td>
+                  <td className="tx-circuit-name">{tx.circuit}</td>
+                  <td>
+                    <span className="witness-badge">{tx.witness}</span>
+                  </td>
+                  <td className="mono-val">#{tx.block}</td>
+                  <td className="mono-val">{tx.dustFee}</td>
+                  <td>
+                    <span className="status-badge-ok">[VERIFIED_OK]</span>
+                  </td>
+                  <td className="mono-time">{tx.time}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

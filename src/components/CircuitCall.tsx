@@ -7,9 +7,7 @@ interface CircuitCallProps {
 }
 
 export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) => {
-  const { isConnected } = useMidnight();
-  const [counterValue, setCounterValue] = useState<number>(42);
-  const [dustBalance, setDustBalance] = useState<number>(120.50);
+  const { isConnected, counterState, isLoadingState, fetchLiveContractState } = useMidnight();
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [isProving, setIsProving] = useState<boolean>(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
@@ -25,14 +23,15 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
     // Simulate local browser proof generation & on-chain tx submission
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const newCount = counterValue + secretIncrement;
+    const newCount = counterState + secretIncrement;
     const txHash = `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-    setCounterValue(newCount);
-    setDustBalance((prev) => Math.max(0, prev - 0.15));
     setLastTxHash(txHash);
     setSubmissionStatus('Submitted on-chain successfully! State updated.');
     setIsProving(false);
+
+    // Refresh live contract state from indexer
+    fetchLiveContractState();
 
     if (onCircuitExecuted) {
       onCircuitExecuted(txHash, newCount);
@@ -50,7 +49,7 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           </span>
           <span className="panel-label">
             <CheckCircle2 size={14} />
-            PUBLIC_LEDGER_COUNT: {counterValue}
+            PUBLIC_LEDGER_COUNT: {isLoadingState ? 'SYNCING...' : counterState}
           </span>
         </div>
 
@@ -73,7 +72,7 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           <span>Proved without revealing your input</span>
         </div>
 
-        <div className="metric-large">COUNT: {counterValue}</div>
+        <div className="metric-large">COUNT: {isLoadingState ? '...' : counterState}</div>
 
         <div className="hud-actions">
           <button
@@ -106,7 +105,15 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
               fontSize: '0.8rem',
             }}
           >
-            <div style={{ color: isProving ? '#fbbf24' : '#ffffff', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div
+              style={{
+                color: isProving ? '#fbbf24' : '#ffffff',
+                marginBottom: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               <CheckCircle2 size={14} />
               {submissionStatus}
             </div>
@@ -123,19 +130,19 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
       <div className="asset-grid-tech">
         <div className="asset-box-tech">
           <div className="asset-tag">ASSET_01 :: TNIGHT_NATIVE</div>
-          <div className="asset-val">250.00 TNIGHT</div>
-          <div className="asset-sub">STATE: UNSHIELDED // RATE: $4.25</div>
+          <div className="asset-val">{isConnected ? '250.00 TNIGHT' : '0.00 TNIGHT'}</div>
+          <div className="asset-sub">STATE: {isConnected ? 'UNSHIELDED' : 'NOT CONNECTED'}</div>
         </div>
 
         <div className="asset-box-tech">
           <div className="asset-tag">ASSET_02 :: DUST_ZK_FEE</div>
-          <div className="asset-val">{dustBalance.toFixed(2)} DUST</div>
+          <div className="asset-val">{isConnected ? '120.50 DUST' : '0.00 DUST'}</div>
           <div className="asset-sub">PROOF_RESOURCE_BALANCE</div>
         </div>
 
         <div className="asset-box-tech">
           <div className="asset-tag">CONTRACT :: COUNTER.COMPACT</div>
-          <div className="asset-val">COUNT: {counterValue}</div>
+          <div className="asset-val">COUNT: {counterState}</div>
           <div className="asset-sub">PUBLIC_LEDGER_STATE</div>
         </div>
       </div>
