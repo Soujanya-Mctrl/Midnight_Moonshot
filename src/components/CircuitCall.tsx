@@ -7,7 +7,7 @@ interface CircuitCallProps {
 }
 
 export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) => {
-  const { isConnected, counterState, isLoadingState, fetchLiveContractState } = useMidnight();
+  const { isConnected, counterState, isLoadingState, tnightBalance, dustBalance, fetchLiveContractState } = useMidnight();
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [isProving, setIsProving] = useState<boolean>(false);
   const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
@@ -130,13 +130,13 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
       <div className="asset-grid-tech">
         <div className="asset-box-tech">
           <div className="asset-tag">ASSET_01 :: TNIGHT_NATIVE</div>
-          <div className="asset-val">{isConnected ? '250.00 TNIGHT' : '0.00 TNIGHT'}</div>
+          <div className="asset-val">{isConnected ? `${tnightBalance} TNIGHT` : '0.00 TNIGHT'}</div>
           <div className="asset-sub">STATE: {isConnected ? 'UNSHIELDED' : 'NOT CONNECTED'}</div>
         </div>
 
         <div className="asset-box-tech">
           <div className="asset-tag">ASSET_02 :: DUST_ZK_FEE</div>
-          <div className="asset-val">{isConnected ? '120.50 DUST' : '0.00 DUST'}</div>
+          <div className="asset-val">{isConnected ? `${dustBalance} DUST` : '0.00 DUST'}</div>
           <div className="asset-sub">PROOF_RESOURCE_BALANCE</div>
         </div>
 
