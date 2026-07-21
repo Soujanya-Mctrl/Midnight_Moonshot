@@ -2,6 +2,7 @@
 
 > A privacy-preserving Counter smart contract built on the Midnight Network using the Compact language.
 
+
 ## Contract Address
 
 | Network  | Address                                                          |
