@@ -31,7 +31,7 @@ export function useMidnight(): MidnightHookState {
   const [isLoadingState, setIsLoadingState] = useState<boolean>(false);
   const [tnightBalance, setTnightBalance] = useState<string>('0.00');
   const [dustBalance, setDustBalance] = useState<string>('0.00');
-  const [network, setNetwork] = useState<string>('Preview Testnet');
+  const [network, setNetwork] = useState<string>('Preprod Testnet');
 
   // Locate injected window.midnight provider
   const getMidnightWalletProvider = (): { id: string; provider: any } | null => {
@@ -196,14 +196,32 @@ export function useMidnight(): MidnightHookState {
       const provider = walletInfo.provider;
       let api: any = null;
 
-      try {
-        if (typeof provider.enable === 'function') {
-          api = await provider.enable();
-        } else if (typeof provider.connect === 'function') {
-          api = await provider.connect();
+      // Connection methods with network ID fallbacks for Lace DApp connector
+      const connectAttempts = [
+        () => (typeof provider.connect === 'function' ? provider.connect('preprod') : null),
+        () => (typeof provider.connect === 'function' ? provider.connect('preview') : null),
+        () => (typeof provider.connect === 'function' ? provider.connect('undeployed') : null),
+        () => (typeof provider.enable === 'function' ? provider.enable('preprod') : null),
+        () => (typeof provider.enable === 'function' ? provider.enable() : null),
+        () => (typeof provider.connect === 'function' ? provider.connect() : null),
+      ];
+
+      let lastError: any = null;
+      for (const attempt of connectAttempts) {
+        try {
+          const res = await attempt();
+          if (res) {
+            api = res;
+            break;
+          }
+        } catch (err: any) {
+          console.warn('Lace connect attempt failed:', err);
+          lastError = err;
         }
-      } catch (err: any) {
-        throw new Error(err?.message || 'Lace Wallet connection request was rejected or failed.');
+      }
+
+      if (!api && lastError) {
+        throw new Error(lastError?.message || 'Lace Wallet connection request was rejected or failed.');
       }
 
       if (!api) {

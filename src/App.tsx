@@ -52,7 +52,7 @@ export function App() {
 
         <div className="hud-status-badge">
           <span className="status-dot"></span>
-          PREVIEW_TESTNET [LIVE]
+          PREPROD_TESTNET [LIVE]
         </div>
       </header>
 
