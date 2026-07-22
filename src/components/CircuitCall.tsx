@@ -78,20 +78,22 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         {/* Mandatory Privacy Guarantee Label */}
         <div
           style={{
-            padding: '0.65rem 1rem',
-            background: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: '#e2e8f0',
-            fontSize: '0.8rem',
+            padding: '0.75rem 1.25rem',
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+            borderRadius: '12px',
+            color: '#c7d2fe',
+            fontSize: '0.82rem',
             fontFamily: 'JetBrains Mono',
-            marginBottom: '1.25rem',
+            marginBottom: '1.5rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.08)',
           }}
         >
-          <ShieldCheck size={16} style={{ color: '#ffffff' }} />
-          <span>Proved without revealing your input</span>
+          <ShieldCheck size={18} style={{ color: '#818cf8' }} />
+          <span style={{ fontWeight: 600, letterSpacing: '0.02em' }}>Proved without revealing your input</span>
         </div>
 
         <div className="metric-large">COUNT: {isLoadingState ? '...' : counterState}</div>
@@ -101,7 +103,6 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
             className="btn-tech primary"
             onClick={handleIncrementCircuit}
             disabled={!isConnected || isProving}
-            style={{ opacity: !isConnected ? 0.5 : 1, cursor: !isConnected ? 'not-allowed' : 'pointer' }}
           >
             {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
             {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
@@ -119,29 +120,33 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         {submissionStatus && (
           <div
             style={{
-              marginTop: '1.25rem',
-              padding: '0.85rem 1rem',
-              background: 'rgba(0, 0, 0, 0.4)',
-              border: '1px solid var(--panel-border)',
+              marginTop: '1.5rem',
+              padding: '1rem 1.25rem',
+              background: 'rgba(15, 23, 42, 0.8)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              borderRadius: '14px',
               fontFamily: 'JetBrains Mono',
-              fontSize: '0.8rem',
+              fontSize: '0.82rem',
+              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.4)',
             }}
           >
             <div
               style={{
-                color: isProving ? '#fbbf24' : '#ffffff',
-                marginBottom: '4px',
+                color: isProving ? '#fbbf24' : '#34d399',
+                marginBottom: '6px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
+                fontWeight: 600,
               }}
             >
-              <CheckCircle2 size={14} />
+              <CheckCircle2 size={16} />
               {submissionStatus}
             </div>
             {lastTxHash && (
-              <div style={{ color: '#94a3b8', wordBreak: 'break-all', marginTop: '4px' }}>
-                ONCHAIN_TX_HASH: <span style={{ color: '#ffffff' }}>{lastTxHash}</span>
+              <div style={{ color: '#94a3b8', wordBreak: 'break-all', marginTop: '6px', fontSize: '0.78rem' }}>
+                ONCHAIN_TX_HASH: <span style={{ color: '#38bdf8', fontWeight: 600 }}>{lastTxHash}</span>
               </div>
             )}
           </div>
