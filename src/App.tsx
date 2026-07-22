@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Terminal, Cpu, Database, Activity } from 'lucide-react';
+import { Database, Activity } from 'lucide-react';
 import { WalletConnect } from './components/WalletConnect';
 import { CircuitCall } from './components/CircuitCall';
 import { useMidnight } from './hooks/useMidnight';
@@ -18,42 +18,11 @@ interface TxRecord {
 export function App() {
   const { isConnected, address, counterState } = useMidnight();
   const [blockHeight, setBlockHeight] = useState<number | string>('Syncing...');
-
-  const [terminalLogs, setTerminalLogs] = useState<Array<{ time: string; tag: string; msg: string }>>([]);
   const [onChainTxs, setOnChainTxs] = useState<TxRecord[]>([]);
 
-
-
-  useEffect(() => {
-    const timeStr = new Date().toTimeString().split(' ')[0];
-    setTerminalLogs([
-      { time: timeStr, tag: '[SYS_INIT]', msg: 'Compact Runtime v0.23 initialized' },
-      { time: timeStr, tag: '[NETWORK]', msg: 'Connected to Midnight Preview Testnet' },
-      { time: timeStr, tag: '[INDEXER]', msg: `Querying state for 9a6287e3...4c48` },
-      { time: timeStr, tag: '[CONTRACT]', msg: `Live count state resolved: ${counterState}` },
-    ]);
-  }, [counterState]);
-
-  useEffect(() => {
-    if (isConnected && address) {
-      const timeStr = new Date().toTimeString().split(' ')[0];
-      setTerminalLogs((prev) => [
-        ...prev,
-        { time: timeStr, tag: '[WALLET]', msg: `Lace wallet connected: ${address.substring(0, 18)}...` },
-      ]);
-    }
-  }, [isConnected, address]);
-
   const handleCircuitExecuted = (txHash: string, newCount: number) => {
-    const timeStr = new Date().toTimeString().split(' ')[0];
     const newHeight = typeof blockHeight === 'number' ? blockHeight + 1 : 'Pending...';
     setBlockHeight(newHeight);
-
-    setTerminalLogs((prev) => [
-      ...prev,
-      { time: timeStr, tag: '[CIRCUIT]', msg: `Disclosed secretWitness -> count = ${newCount}` },
-      { time: timeStr, tag: '[PROOF_GEN]', msg: `ZK Prover generated proof in 1.2s [OK]` },
-    ]);
 
     setOnChainTxs((prev) => [
       {
@@ -81,57 +50,20 @@ export function App() {
           </div>
         </div>
 
-        <nav className="hud-nav-items">
-          <div className="nav-link active">
-            <Terminal size={14} />
-            [01] CONSOLE
-          </div>
-          <div className="nav-link">
-            <Cpu size={14} />
-            [02] CIRCUITS
-          </div>
-          <div className="nav-link">
-            <Database size={14} />
-            [03] LEDGER
-          </div>
-        </nav>
-
         <div className="hud-status-badge">
           <span className="status-dot"></span>
           PREVIEW_TESTNET [LIVE]
         </div>
       </header>
 
-      {/* Master 2-Column Dashboard Layout */}
+      {/* Master Dashboard Layout */}
       <div className="master-layout">
         {/* Left Column: Circuit Controls & Asset Cards */}
         <CircuitCall onCircuitExecuted={handleCircuitExecuted} />
 
-        {/* Right Column: Wallet Connection & System Event Console */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        {/* Right Column: Wallet Connection */}
+        <div className="right-column">
           <WalletConnect />
-
-          <div className="terminal-panel" style={{ flex: 1 }}>
-            <div className="terminal-header">
-              <div className="terminal-title">
-                <Terminal size={14} />
-                SYSTEM_EVENT_CONSOLE
-              </div>
-              <div style={{ fontFamily: 'JetBrains Mono', fontSize: '0.7rem', color: '#94a3b8' }}>
-                [{terminalLogs.length} EVENTS]
-              </div>
-            </div>
-
-            <div className="terminal-feed">
-              {terminalLogs.map((log, index) => (
-                <div key={index} className="log-entry">
-                  <span className="log-time">[{log.time}]</span>
-                  <span className="log-tag">{log.tag}</span>
-                  <span className="log-msg">{log.msg}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

@@ -33,24 +33,23 @@ export const WalletConnect: React.FC = () => {
         <div
           style={{
             padding: '0.9rem 1.1rem',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.35)',
-            borderRadius: '12px',
-            color: '#fca5a5',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            borderRadius: '10px',
+            color: '#ffffff',
             fontSize: '0.8rem',
             fontFamily: 'JetBrains Mono',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '1.25rem',
-            boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={16} style={{ color: '#ef4444' }} />
+            <AlertTriangle size={16} style={{ color: '#ffffff' }} />
             <span>{error}</span>
           </div>
-          <XCircle size={16} style={{ cursor: 'pointer', minWidth: '16px', color: '#fca5a5' }} onClick={clearError} />
+          <XCircle size={16} style={{ cursor: 'pointer', minWidth: '16px', color: '#a3a3a3' }} onClick={clearError} />
         </div>
       )}
 
@@ -59,18 +58,17 @@ export const WalletConnect: React.FC = () => {
         <div
           style={{
             padding: '0.9rem 1.1rem',
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '12px',
-            color: '#fcd34d',
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '10px',
+            color: '#e5e5e5',
             fontSize: '0.78rem',
             fontFamily: 'JetBrains Mono',
             marginBottom: '1.25rem',
-            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.08)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
+            <AlertTriangle size={16} style={{ color: '#ffffff' }} />
             <span style={{ fontWeight: 600 }}>Lace Wallet extension not detected in browser.</span>
           </div>
           <a
@@ -78,8 +76,8 @@ export const WalletConnect: React.FC = () => {
             target="_blank"
             rel="noreferrer"
             style={{
-              color: '#38bdf8',
-              textDecoration: 'none',
+              color: '#ffffff',
+              textDecoration: 'underline',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',

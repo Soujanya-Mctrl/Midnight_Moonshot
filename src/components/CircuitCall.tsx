@@ -79,20 +79,19 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         <div
           style={{
             padding: '0.75rem 1.25rem',
-            background: 'rgba(99, 102, 241, 0.08)',
-            border: '1px solid rgba(99, 102, 241, 0.25)',
-            borderRadius: '12px',
-            color: '#c7d2fe',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '10px',
+            color: '#e5e5e5',
             fontSize: '0.82rem',
             fontFamily: 'JetBrains Mono',
             marginBottom: '1.5rem',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.08)',
           }}
         >
-          <ShieldCheck size={18} style={{ color: '#818cf8' }} />
+          <ShieldCheck size={18} style={{ color: '#ffffff' }} />
           <span style={{ fontWeight: 600, letterSpacing: '0.02em' }}>Proved without revealing your input</span>
         </div>
 
@@ -122,18 +121,18 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
             style={{
               marginTop: '1.5rem',
               padding: '1rem 1.25rem',
-              background: 'rgba(15, 23, 42, 0.8)',
+              background: 'rgba(20, 20, 20, 0.9)',
               backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              borderRadius: '14px',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: '10px',
               fontFamily: 'JetBrains Mono',
               fontSize: '0.82rem',
-              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.4)',
+              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.6)',
             }}
           >
             <div
               style={{
-                color: isProving ? '#fbbf24' : '#34d399',
+                color: '#ffffff',
                 marginBottom: '6px',
                 display: 'flex',
                 alignItems: 'center',
@@ -145,8 +144,8 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
               {submissionStatus}
             </div>
             {lastTxHash && (
-              <div style={{ color: '#94a3b8', wordBreak: 'break-all', marginTop: '6px', fontSize: '0.78rem' }}>
-                ONCHAIN_TX_HASH: <span style={{ color: '#38bdf8', fontWeight: 600 }}>{lastTxHash}</span>
+              <div style={{ color: '#a3a3a3', wordBreak: 'break-all', marginTop: '6px', fontSize: '0.78rem' }}>
+                ONCHAIN_TX_HASH: <span style={{ color: '#ffffff', fontWeight: 600 }}>{lastTxHash}</span>
               </div>
             )}
           </div>
