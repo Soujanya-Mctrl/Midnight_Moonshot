@@ -196,32 +196,23 @@ export function useMidnight(): MidnightHookState {
       const provider = walletInfo.provider;
       let api: any = null;
 
-      // Connection methods with network ID fallbacks for Lace DApp connector
-      const connectAttempts = [
-        () => (typeof provider.connect === 'function' ? provider.connect('preprod') : null),
-        () => (typeof provider.connect === 'function' ? provider.connect('preview') : null),
-        () => (typeof provider.connect === 'function' ? provider.connect('undeployed') : null),
-        () => (typeof provider.enable === 'function' ? provider.enable('preprod') : null),
-        () => (typeof provider.enable === 'function' ? provider.enable() : null),
-        () => (typeof provider.connect === 'function' ? provider.connect() : null),
-      ];
-
-      let lastError: any = null;
-      for (const attempt of connectAttempts) {
-        try {
-          const res = await attempt();
-          if (res) {
-            api = res;
-            break;
-          }
-        } catch (err: any) {
-          console.warn('Lace connect attempt failed:', err);
-          lastError = err;
+      try {
+        if (typeof provider.connect === 'function') {
+          api = await provider.connect('preprod');
+        } else if (typeof provider.enable === 'function') {
+          api = await provider.enable('preprod');
         }
-      }
-
-      if (!api && lastError) {
-        throw new Error(lastError?.message || 'Lace Wallet connection request was rejected or failed.');
+      } catch (err: any) {
+        // Fallback to preview if preprod network ID is not recognized by user's wallet version
+        try {
+          if (typeof provider.connect === 'function') {
+            api = await provider.connect('preview');
+          } else if (typeof provider.enable === 'function') {
+            api = await provider.enable();
+          }
+        } catch (fallbackErr: any) {
+          throw err;
+        }
       }
 
       if (!api) {
