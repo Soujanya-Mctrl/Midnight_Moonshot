@@ -65,6 +65,14 @@ An on-chain observer or block explorer sees the updated public `count` value on 
    npm run build
    ```
 
+## Screenshots
+
+### Smart Contract Compilation
+![Compact Contract Compilation](docs/screenshots/compile.png)
+
+### Network Deployment
+![Contract Deployment to Preprod](docs/screenshots/deploy.png)
+
 ## Demo Video
 
 [PLACEHOLDER — I will add the link after recording]
