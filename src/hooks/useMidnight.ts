@@ -32,6 +32,7 @@ export function useMidnight(): MidnightHookState {
   const [tnightBalance, setTnightBalance] = useState<string>('0.00');
   const [dustBalance, setDustBalance] = useState<string>('0.00');
   const [network, setNetwork] = useState<string>('Preprod Testnet');
+  const [connectedAPI, setConnectedAPI] = useState<any>(null);
 
   // Locate injected window.midnight provider
   const getMidnightWalletProvider = (): { id: string; provider: any } | null => {
@@ -67,6 +68,27 @@ export function useMidnight(): MidnightHookState {
     };
   }, []);
 
+  // Account switch auto-sync effect
+  useEffect(() => {
+    if (!connectedAPI) return;
+
+    const syncAccountState = async () => {
+      try {
+        const { addr, tnight, dust } = await extractAddressAndState(connectedAPI);
+        if (addr && addr !== address) {
+          setAddress(addr);
+        }
+        if (tnight) setTnightBalance(tnight);
+        if (dust) setDustBalance(dust);
+      } catch (e) {
+        console.warn('Account sync error:', e);
+      }
+    };
+
+    const accountInterval = setInterval(syncAccountState, 2000);
+    return () => clearInterval(accountInterval);
+  }, [connectedAPI, address]);
+
   const fetchLiveContractState = async () => {
     setIsLoadingState(true);
     try {
@@ -101,8 +123,6 @@ export function useMidnight(): MidnightHookState {
       setIsLoadingState(false);
     }
   };
-
-  const [connectedAPI, setConnectedAPI] = useState<any>(null);
 
   const extractAddressAndState = async (api: any): Promise<{ addr: string | null; tnight: string; dust: string }> => {
     let addr: string | null = null;
@@ -195,24 +215,34 @@ export function useMidnight(): MidnightHookState {
 
       const provider = walletInfo.provider;
       let api: any = null;
+      let lastErr: any = null;
 
-      try {
-        if (typeof provider.connect === 'function') {
-          api = await provider.connect('preprod');
-        } else if (typeof provider.enable === 'function') {
-          api = await provider.enable('preprod');
-        }
-      } catch (err: any) {
-        // Fallback to preview if preprod network ID is not recognized by user's wallet version
+      const networkIds = ['preprod', 'preview', 'undeployed', 'mainnet'];
+
+      for (const netId of networkIds) {
         try {
           if (typeof provider.connect === 'function') {
-            api = await provider.connect('preview');
+            api = await provider.connect(netId);
           } else if (typeof provider.enable === 'function') {
-            api = await provider.enable();
+            api = await provider.enable(netId);
           }
-        } catch (fallbackErr: any) {
+          if (api) {
+            setNetwork(`${netId.charAt(0).toUpperCase() + netId.slice(1)} Testnet`);
+            break;
+          }
+        } catch (err: any) {
+          lastErr = err;
+          const msg = (err?.message || '').toLowerCase();
+          if (msg.includes('network id mismatch') || msg.includes('unsupported network id') || msg.includes('invalid network id')) {
+            console.warn(`Lace connect mismatch/unsupported for '${netId}', trying next network...`);
+            continue;
+          }
           throw err;
         }
+      }
+
+      if (!api && lastErr) {
+        throw lastErr;
       }
 
       if (!api) {
