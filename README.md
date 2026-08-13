@@ -171,4 +171,4 @@ To run contract scripts on Preview or Preprod:
 
 ## Demo Video
 
-[PLACEHOLDER — I will add the link after recording]
+[Demo Video](https://drive.google.com/file/d/1h5w8XuM10CAimDA85STW0bI9qKYl67Rv/view?usp=sharing)
