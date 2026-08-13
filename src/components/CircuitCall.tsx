@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Cpu, ExternalLink, CheckCircle2, ShieldCheck, Loader2, Rocket } from 'lucide-react';
+import { Zap, Cpu, ExternalLink, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
 import { useMidnight } from '../hooks/useMidnight';
 
 interface CircuitCallProps {
@@ -15,20 +15,11 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
     dustBalance,
     fetchLiveContractState,
     contractAddress,
-    isDeploying,
     isCallingCircuit,
     lastTxHash,
     error,
-    deployContract,
     callIncrementCircuit,
   } = useMidnight();
-
-  const handleDeploy = async () => {
-    const addr = await deployContract();
-    if (addr) {
-      console.log('✅ Contract deployed at:', addr);
-    }
-  };
 
   const handleIncrementCircuit = async () => {
     const txHash = await callIncrementCircuit();
@@ -73,33 +64,21 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         >
           <ShieldCheck size={18} style={{ color: '#ffffff' }} />
           <span style={{ fontWeight: 600, letterSpacing: '0.02em' }}>
-            {contractAddress ? 'Real wallet proof flow active' : 'Deploy contract to begin'}
+            Real wallet proof flow active :: Zero-Knowledge Increments
           </span>
         </div>
 
         <div className="metric-large">COUNT: {isLoadingState ? '...' : displayCount}</div>
 
         <div className="hud-actions">
-          {/* Show Deploy button if no contract deployed */}
-          {!contractAddress ? (
-            <button
-              className="btn-tech primary"
-              onClick={handleDeploy}
-              disabled={!isConnected || isDeploying}
-            >
-              {isDeploying ? <Loader2 size={16} className="spin-icon" /> : <Rocket size={16} />}
-              {isDeploying ? 'DEPLOYING CONTRACT...' : 'DEPLOY COUNTER CONTRACT'}
-            </button>
-          ) : (
-            <button
-              className="btn-tech primary"
-              onClick={handleIncrementCircuit}
-              disabled={!isConnected || isProving || isDeploying}
-            >
-              {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
-              {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
-            </button>
-          )}
+          <button
+            className="btn-tech primary"
+            onClick={handleIncrementCircuit}
+            disabled={!isConnected || isProving}
+          >
+            {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
+            {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
+          </button>
           <button
             className="btn-tech"
             onClick={() => window.open('https://midnight-tmnight-preview.nethermind.dev', '_blank')}
@@ -201,7 +180,7 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
         <div className="asset-box-tech">
           <div className="asset-tag">CONTRACT :: COUNTER.COMPACT</div>
           <div className="asset-val">COUNT: {displayCount}</div>
-          <div className="asset-sub">{contractAddress ? 'ON-CHAIN STATE' : 'READY TO DEPLOY'}</div>
+          <div className="asset-sub">ON-CHAIN LEDGER STATE</div>
         </div>
       </div>
     </div>
