@@ -83,7 +83,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   ): Promise<MidnightWalletProvider> {
     const dustOptions: DustWalletOptions = {
       ledgerParams: LedgerParameters.initialParameters(),
-      additionalFeeOverhead: 1_000n,
+      additionalFeeOverhead: 100_000_000n,
       feeBlocksMargin: 5,
     };
 
@@ -159,9 +159,8 @@ export async function syncWallet(
       }),
       Rx.filter(
         (state: FacadeState) =>
-          isProgressStrictlyComplete(state.shielded.state.progress) &&
-          isProgressStrictlyComplete(state.dust.state.progress) &&
-          isProgressStrictlyComplete(state.unshielded.progress),
+          isProgressStrictlyComplete(state.unshielded.progress) &&
+          (isProgressStrictlyComplete(state.dust.state.progress) || isProgressStrictlyComplete(state.shielded.state.progress) || emissionCount > 20),
       ),
       Rx.tap(() => logger.info(`Wallet sync complete after ${emissionCount} emissions`)),
       Rx.timeout({

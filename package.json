@@ -8,11 +8,13 @@
   },
   "scripts": {
     "dev": "vite",
+    "build": "tsc && vite build",
     "compile": "compact compile contracts/hello-world.compact contracts/managed/hello-world",
     "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
     "test:local": "MIDNIGHT_NETWORK=local yarn test",
     "test:preview": "MIDNIGHT_NETWORK=preview yarn test",
     "test:preprod": "MIDNIGHT_NETWORK=preprod yarn test",
+    "deploy:preview": "npx cross-env MIDNIGHT_NETWORK=preview npx tsx scripts/deploy-preview.ts",
     "env:up": "docker compose up -d",
     "env:down": "docker compose down",
     "verify": "npx tsx scripts/verify-deployment.ts",
@@ -22,8 +24,11 @@
     "validate": "yarn env:up && yarn test:local; yarn env:down"
   },
   "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.16.0",
     "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
+    "@midnight-ntwrk/ledger-v8": "^8.1.1",
     "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "^4.1.1",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
@@ -37,6 +42,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.15.0",
+    "buffer": "^6.0.3",
     "lucide-react": "^1.25.0",
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0",
@@ -50,7 +56,11 @@
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
     "@vitejs/plugin-react": "^6.0.3",
+    "esbuild": "^0.28.2",
+    "rollup": "^4.62.4",
     "typescript": "^5.7.0",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.0"
   },
   "resolutions": {

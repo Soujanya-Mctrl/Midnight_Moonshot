@@ -1,4 +1,26 @@
-import { useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createUnprovenCallTx, createUnprovenDeployTx, submitTxAsync } from '@midnight-ntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ConnectedSession, WalletProviderEntry } from '../lib/midnight';
+import {
+  COUNTER_CIRCUIT_ID,
+  connectInjectedWallet,
+  createCounterCompiledContract,
+  createCounterPublicDataProvider,
+  createConnectedSession,
+  detectInjectedWalletProviders,
+  formatNetworkLabel,
+  getCounterLedgerCount,
+  waitForCounterLedgerCount,
+  waitForTransactionIndexing,
+} from '../lib/midnight';
+
+export interface WalletProviderInfo {
+  id: string;
+  name: string;
+  icon?: string;
+  provider: WalletProviderEntry['provider'];
+}
 
 export interface MidnightHookState {
   isConnected: boolean;
@@ -7,288 +29,311 @@ export interface MidnightHookState {
   network: string;
   error: string | null;
   isConnecting: boolean;
-  counterState: number;
+  counterState: number | null;
   isLoadingState: boolean;
   tnightBalance: string;
   dustBalance: string;
-  connectWallet: () => Promise<void>;
+  availableWallets: WalletProviderInfo[];
+  selectedWalletId: string | null;
+  contractAddress: string | null;
+  session: ConnectedSession | null;
+  isDeploying: boolean;
+  isCallingCircuit: boolean;
+  lastTxHash: string | null;
+  connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
   clearError: () => void;
   fetchLiveContractState: () => Promise<void>;
+  deployContract: () => Promise<string | null>;
+  callIncrementCircuit: () => Promise<string | null>;
   connectedAPI: any;
 }
 
-const CONTRACT_ADDRESS = '9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417';
-const INDEXER_URL = 'https://indexer.preprod.midnight.network/api/v4/graphql';
+const LOCAL_STORAGE_KEY = 'midnight_counter_contract_address';
 
-export function useMidnight(): MidnightHookState {
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [isLaceInstalled, setIsLaceInstalled] = useState<boolean>(false);
-  const [address, setAddress] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
-  const [counterState, setCounterState] = useState<number>(42);
-  const [isLoadingState, setIsLoadingState] = useState<boolean>(false);
-  const [tnightBalance, setTnightBalance] = useState<string>('0.00');
-  const [dustBalance, setDustBalance] = useState<string>('0.00');
-  const [network, setNetwork] = useState<string>('Preprod Testnet');
-  const [connectedAPI, setConnectedAPI] = useState<any>(null);
+const MidnightContext = createContext<MidnightHookState | undefined>(undefined);
 
-  // Locate injected window.midnight provider
-  const getMidnightWalletProvider = (): { id: string; provider: any } | null => {
-    if (typeof window === 'undefined') return null;
-    const win = window as any;
-    if (!win.midnight) return null;
+function formatBalance(value: unknown): string {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value.toFixed(2) : '0.00';
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value;
+  }
+  return '0.00';
+}
 
-    const walletKeys = Object.keys(win.midnight);
-    for (const key of walletKeys) {
-      const p = win.midnight[key];
-      if (p && (typeof p.connect === 'function' || typeof p.enable === 'function')) {
-        return { id: key, provider: p };
+async function readWalletBalances(api: any): Promise<{ tnightBalance: string; dustBalance: string }> {
+  let tnightBalance = '0.00';
+  let dustBalance = '0.00';
+
+  try {
+    if (typeof api.getUnshieldedBalances === 'function') {
+      const balances = await api.getUnshieldedBalances();
+      if (balances && typeof balances === 'object') {
+        const [firstBalance] = Object.values(balances as Record<string, unknown>);
+        tnightBalance = formatBalance(firstBalance);
       }
     }
+
+    if (typeof api.getDustBalance === 'function') {
+      const dust = await api.getDustBalance();
+      if (dust && typeof dust === 'object' && 'balance' in dust) {
+        dustBalance = formatBalance((dust as { balance: unknown }).balance);
+      } else {
+        dustBalance = formatBalance(dust);
+      }
+    }
+  } catch {
+    // balance reads are informational only
+  }
+
+  return { tnightBalance, dustBalance };
+}
+
+async function resolveConnectedAddress(api: any): Promise<string | null> {
+  try {
+    if (typeof api.getUnshieldedAddress === 'function') {
+      const addressResult = await api.getUnshieldedAddress();
+      if (typeof addressResult === 'string') {
+        return addressResult;
+      }
+      return addressResult?.unshieldedAddress ?? addressResult?.address ?? null;
+    }
+
+    if (typeof api.getShieldedAddresses === 'function') {
+      const shielded = await api.getShieldedAddresses();
+      const firstEntry = Array.isArray(shielded) ? shielded[0] : shielded;
+      return firstEntry?.unshieldedAddress ?? firstEntry?.address ?? null;
+    }
+  } catch {
     return null;
-  };
+  }
+
+  return null;
+}
+
+export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLaceInstalled, setIsLaceInstalled] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [network, setNetwork] = useState('PREVIEW');
+  const [error, setError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [counterState, setCounterState] = useState<number | null>(null);
+  const [isLoadingState, setIsLoadingState] = useState(false);
+  const [tnightBalance, setTnightBalance] = useState('0.00');
+  const [dustBalance, setDustBalance] = useState('0.00');
+  const [availableWallets, setAvailableWallets] = useState<WalletProviderInfo[]>([]);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const [session, setSession] = useState<ConnectedSession | null>(null);
+  const [contractAddress, setContractAddress] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return window.localStorage.getItem(LOCAL_STORAGE_KEY) || ((import.meta as any).env?.VITE_CONTRACT_ADDRESS as string) || null;
+  });
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [isCallingCircuit, setIsCallingCircuit] = useState(false);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
+  const [connectedAPI, setConnectedAPI] = useState<any>(null);
+  const previewIndexerProvider = useMemo(
+    () => createCounterPublicDataProvider(
+      'https://indexer.preview.midnight.network/api/v4/graphql',
+      'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
+    ),
+    [],
+  );
 
   useEffect(() => {
-    const check = () => {
-      const walletInfo = getMidnightWalletProvider();
-      setIsLaceInstalled(!!walletInfo);
+    const refreshWallets = () => {
+      const wallets = detectInjectedWalletProviders();
+      setAvailableWallets(wallets);
+      setIsLaceInstalled(wallets.length > 0);
     };
 
-    check();
-    window.addEventListener('load', check);
-    const interval = setInterval(check, 1000);
-
-    fetchLiveContractState();
+    refreshWallets();
+    const intervalId = window.setInterval(refreshWallets, 1000);
 
     return () => {
-      window.removeEventListener('load', check);
-      clearInterval(interval);
+      window.clearInterval(intervalId);
     };
   }, []);
 
-  // Account switch auto-sync effect
   useEffect(() => {
-    if (!connectedAPI) return;
+    if (!contractAddress || typeof window === 'undefined') {
+      return;
+    }
 
-    const syncAccountState = async () => {
-      try {
-        const { addr, tnight, dust } = await extractAddressAndState(connectedAPI);
-        if (addr && addr !== address) {
-          setAddress(addr);
-        }
-        if (tnight) setTnightBalance(tnight);
-        if (dust) setDustBalance(dust);
-      } catch (e) {
-        console.warn('Account sync error:', e);
-      }
-    };
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, contractAddress);
+  }, [contractAddress]);
 
-    const accountInterval = setInterval(syncAccountState, 2000);
-    return () => clearInterval(accountInterval);
-  }, [connectedAPI, address]);
+  const fetchLiveContractState = useCallback(async () => {
+    if (!contractAddress) {
+      setCounterState(null);
+      return;
+    }
 
-  const fetchLiveContractState = async () => {
     setIsLoadingState(true);
     try {
-      const response = await fetch(INDEXER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `
-            query GetContractState($address: String!) {
-              contractState(address: $address) {
-                data
-              }
-            }
-          `,
-          variables: { address: CONTRACT_ADDRESS },
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const data = result?.data?.contractState?.data;
-        if (data) {
-          const parsedVal = parseInt(data, 16) || parseInt(data, 10);
-          if (!isNaN(parsedVal)) {
-            setCounterState(parsedVal);
-          }
-        }
+      const provider = session?.providers.publicDataProvider ?? previewIndexerProvider;
+      if (provider) {
+        const count = await getCounterLedgerCount(provider, contractAddress);
+        setCounterState(count === null ? null : Number(count));
       }
-    } catch (e) {
-      console.warn('Indexer query error:', e);
     } finally {
       setIsLoadingState(false);
     }
-  };
+  }, [contractAddress, previewIndexerProvider, session]);
 
-  const extractAddressAndState = async (api: any): Promise<{ addr: string | null; tnight: string; dust: string }> => {
-    let addr: string | null = null;
-    let tnight = '0.00';
-    let dust = '0.00';
+  useEffect(() => {
+    void fetchLiveContractState();
+  }, [fetchLiveContractState]);
 
-    if (!api) return { addr, tnight, dust };
-
-    console.log('Inspecting connected Lace API object:', api);
-
-    // 1. Try DApp Connector API methods
-    try {
-      if (typeof api.getUnshieldedAddress === 'function') {
-        const addrRes = await api.getUnshieldedAddress();
-        addr = typeof addrRes === 'string' ? addrRes : (addrRes?.unshieldedAddress || addrRes);
-      } else if (typeof api.getShieldedAddresses === 'function') {
-        const addrs = await api.getShieldedAddresses();
-        addr = Array.isArray(addrs) ? addrs[0] : (addrs?.shieldedAddress || addrs);
-      }
-    } catch (e) {
-      console.warn('Direct address method call error:', e);
-    }
-
-    // 2. Try state() observable / promise
-    if (!addr && typeof api.state === 'function') {
-      try {
-        const stateRes = await api.state();
-        if (stateRes) {
-          if (typeof stateRes.subscribe === 'function') {
-            await new Promise<void>((resolve) => {
-              stateRes.subscribe((s: any) => {
-                if (s?.address) addr = s.address;
-                else if (s?.unshieldedAddress) addr = s.unshieldedAddress;
-                else if (s?.coinPublicKey) addr = `mn_addr1${s.coinPublicKey}`;
-                resolve();
-              });
-            });
-          } else {
-            addr = stateRes.address || stateRes.unshieldedAddress || (stateRes.coinPublicKey ? `mn_addr1${stateRes.coinPublicKey}` : null);
-          }
-        }
-      } catch (e) {
-        console.warn('State call error:', e);
-      }
-    }
-
-    // 3. Check direct object properties
-    if (!addr) {
-      addr =
-        api.address ||
-        api.unshieldedAddress ||
-        (Array.isArray(api.accounts) ? api.accounts[0] : null);
-    }
-
-    // 4. Try balance & config methods
-    try {
-      if (typeof api.getUnshieldedBalances === 'function') {
-        const b = await api.getUnshieldedBalances();
-        if (b) tnight = typeof b === 'object' ? String(Object.values(b)[0] || '0.00') : String(b);
-      }
-      if (typeof api.getDustBalance === 'function') {
-        const d = await api.getDustBalance();
-        if (d && typeof d === 'object' && d.balance !== undefined) {
-           dust = String(d.balance);
-        } else if (d !== undefined && d !== null) {
-           dust = String(d);
-        }
-      }
-    } catch (e) {
-      console.warn('Balance query error:', e);
-    }
-
-    return { addr, tnight, dust };
-  };
-
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async (walletId?: string) => {
     setError(null);
     setIsConnecting(true);
 
     try {
-      const walletInfo = getMidnightWalletProvider();
+      const wallets = detectInjectedWalletProviders();
+      setAvailableWallets(wallets);
+      setIsLaceInstalled(wallets.length > 0);
 
-      if (!walletInfo) {
-        throw new Error(
-          'Lace Wallet extension is not detected in your browser. Make sure the Lace Midnight extension is installed and active.'
-        );
+      if (!wallets.length) {
+        throw new Error('No Midnight wallet extension detected. Install 1 AM Wallet or Lace and reload the page.');
       }
 
-      console.log(`Attempting connection with Midnight Wallet (${walletInfo.id})...`, walletInfo.provider);
+      const walletInfo = walletId ? wallets.find((entry) => entry.id === walletId) ?? wallets[0] : wallets[0];
+      setSelectedWalletId(walletInfo.id);
 
-      const provider = walletInfo.provider;
-      let api: any = null;
-      let lastErr: any = null;
+      const { api, networkId } = await connectInjectedWallet(walletInfo.provider);
+      const connectedSession = await createConnectedSession(api);
+      const resolvedAddress = connectedSession.unshieldedAddress || (await resolveConnectedAddress(api));
+      const { tnightBalance: nextTnightBalance, dustBalance: nextDustBalance } = await readWalletBalances(api);
 
-      const networkIds = ['preprod', 'preview', 'undeployed', 'mainnet'];
-
-      for (const netId of networkIds) {
-        try {
-          if (typeof provider.connect === 'function') {
-            api = await provider.connect(netId);
-          } else if (typeof provider.enable === 'function') {
-            api = await provider.enable(netId);
-          }
-          if (api) {
-            const formattedName =
-              netId === 'mainnet'
-                ? 'Mainnet'
-                : netId === 'undeployed'
-                ? 'Undeployed Localnet'
-                : `${netId.charAt(0).toUpperCase() + netId.slice(1)} Testnet`;
-            setNetwork(formattedName);
-            break;
-          }
-        } catch (err: any) {
-          lastErr = err;
-          const msg = (err?.message || '').toLowerCase();
-          if (msg.includes('network id mismatch') || msg.includes('unsupported network id') || msg.includes('invalid network id')) {
-            console.warn(`Lace connect mismatch/unsupported for '${netId}', trying next network...`);
-            continue;
-          }
-          throw err;
-        }
-      }
-
-      if (!api && lastErr) {
-        throw lastErr;
-      }
-
-      if (!api) {
-        throw new Error('Lace Wallet API is unavailable.');
-      }
-
-      const { addr, tnight, dust } = await extractAddressAndState(api);
-
-      const finalAddr = addr || 'mn_addr1_lace_wallet';
-
+      setSession(connectedSession);
       setConnectedAPI(api);
       setIsConnected(true);
-      setAddress(finalAddr);
-      setTnightBalance(tnight);
-      setDustBalance(dust);
-    } catch (err: any) {
-      console.error('Wallet connection error:', err);
+      setNetwork(formatNetworkLabel(networkId));
+      setAddress(resolvedAddress);
+      setTnightBalance(nextTnightBalance);
+      setDustBalance(nextDustBalance);
+    } catch (connectError: any) {
       setIsConnected(false);
-      setAddress(null);
+      setSession(null);
       setConnectedAPI(null);
-      setError(err?.message || 'Failed to connect Lace Wallet.');
+      setAddress(null);
+      setError(connectError?.message ?? 'Failed to connect wallet.');
     } finally {
       setIsConnecting(false);
     }
-  };
+  }, []);
 
-  const disconnectWallet = () => {
+  const deployContract = useCallback(async (): Promise<string | null> => {
+    if (!session) {
+      setError('Connect a wallet before deploying the contract.');
+      return null;
+    }
+
+    setIsDeploying(true);
+    setError(null);
+
+    try {
+      const compiledContract = createCounterCompiledContract();
+      const unprovenDeployTx = await createUnprovenDeployTx(session.providers as any, {
+        compiledContract,
+        signingKey: sampleSigningKey(),
+      });
+
+      const contractAddressHex = unprovenDeployTx.public.contractAddress;
+      const txId = await submitTxAsync(session.providers as any, {
+        unprovenTx: unprovenDeployTx.private.unprovenTx,
+      });
+
+      setLastTxHash(txId);
+      setContractAddress(contractAddressHex);
+      await session.providers.privateStateProvider.setContractAddress(contractAddressHex);
+      await session.providers.privateStateProvider.setSigningKey(contractAddressHex, unprovenDeployTx.private.signingKey);
+      await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
+      await waitForCounterLedgerCount(session.providers.publicDataProvider, contractAddressHex);
+      await fetchLiveContractState();
+
+      return contractAddressHex;
+    } catch (deployError: any) {
+      setError(deployError?.message ?? 'Contract deployment failed.');
+      return null;
+    } finally {
+      setIsDeploying(false);
+    }
+  }, [fetchLiveContractState, session]);
+
+  const callIncrementCircuit = useCallback(async (): Promise<string | null> => {
+    if (!session) {
+      setError('Connect a wallet before calling the circuit.');
+      return null;
+    }
+
+    if (!contractAddress) {
+      setError('Deploy the contract before calling the circuit.');
+      return null;
+    }
+
+    setIsCallingCircuit(true);
+    setError(null);
+
+    try {
+      const compiledContract = createCounterCompiledContract();
+      const previousCount = counterState !== null ? BigInt(counterState) : null;
+      const unprovenCallTx = await createUnprovenCallTx(session.providers as any, {
+        compiledContract,
+        contractAddress,
+        circuitId: COUNTER_CIRCUIT_ID,
+        args: [1n],
+      });
+
+      const txId = await submitTxAsync(session.providers as any, {
+        unprovenTx: unprovenCallTx.private.unprovenTx,
+        circuitId: COUNTER_CIRCUIT_ID,
+      });
+
+      setLastTxHash(txId);
+      await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
+      await waitForCounterLedgerCount(session.providers.publicDataProvider, contractAddress, previousCount === null ? undefined : previousCount + 1n);
+      await fetchLiveContractState();
+
+      return txId;
+    } catch (callError: any) {
+      setError(callError?.message ?? 'Circuit call failed.');
+      await fetchLiveContractState();
+      return null;
+    } finally {
+      setIsCallingCircuit(false);
+    }
+  }, [contractAddress, counterState, fetchLiveContractState, session]);
+
+  const disconnectWallet = useCallback(() => {
     setIsConnected(false);
     setAddress(null);
+    setSession(null);
     setConnectedAPI(null);
-    setError(null);
+    setSelectedWalletId(null);
+    setNetwork('PREVIEW');
     setTnightBalance('0.00');
     setDustBalance('0.00');
-  };
-
-  const clearError = () => {
+    setCounterState(null);
+    setLastTxHash(null);
     setError(null);
-  };
+  }, []);
 
-  return {
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const value: MidnightHookState = {
     isConnected,
     isLaceInstalled,
     address,
@@ -299,10 +344,30 @@ export function useMidnight(): MidnightHookState {
     isLoadingState,
     tnightBalance,
     dustBalance,
+    availableWallets,
+    selectedWalletId,
+    contractAddress,
+    session,
+    isDeploying,
+    isCallingCircuit,
+    lastTxHash,
     connectWallet,
     disconnectWallet,
     clearError,
     fetchLiveContractState,
+    deployContract,
+    callIncrementCircuit,
     connectedAPI,
   };
+
+  return React.createElement(MidnightContext.Provider, { value }, children);
+};
+
+export function useMidnight(): MidnightHookState {
+  const context = useContext(MidnightContext);
+  if (!context) {
+    throw new Error('useMidnight must be used within a MidnightProvider');
+  }
+
+  return context;
 }

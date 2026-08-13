@@ -10,6 +10,7 @@ export const WalletConnect: React.FC = () => {
     network,
     error,
     isConnecting,
+    availableWallets,
     connectWallet,
     disconnectWallet,
     clearError,
@@ -69,7 +70,7 @@ export const WalletConnect: React.FC = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <AlertTriangle size={16} style={{ color: '#ffffff' }} />
-            <span style={{ fontWeight: 600 }}>Lace Wallet extension not detected in browser.</span>
+            <span style={{ fontWeight: 600 }}>No Midnight wallet extension detected.</span>
           </div>
           <a
             href="https://chromewebstore.google.com/detail/lace/gafhhkghbfjjbfnlhbdpkhbedigapahu"
@@ -85,7 +86,7 @@ export const WalletConnect: React.FC = () => {
             }}
           >
             <ExternalLink size={14} />
-            Install Lace Wallet Extension
+            Install Lace / 1 AM Wallet Extension
           </a>
         </div>
       )}
@@ -94,22 +95,37 @@ export const WalletConnect: React.FC = () => {
       <div className="address-block" style={{ color: isConnected ? '#ffffff' : '#94a3b8' }}>
         {isConnected ? (
           <div>
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px' }}>CONNECTED LACE ADDRESS:</div>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px' }}>CONNECTED WALLET ADDRESS:</div>
             {address}
           </div>
         ) : (
-          'DISCONNECTED // NO ACTIVE LACE SESSION'
+          'DISCONNECTED // NO ACTIVE WALLET SESSION'
         )}
       </div>
 
       {/* Connect / Disconnect Action Buttons */}
-      <div className="hud-actions">
+      <div className="hud-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
         {!isConnected ? (
-          <button className="btn-tech primary" onClick={connectWallet} disabled={isConnecting}>
-            <Wallet size={16} />
-            {isConnecting ? 'CONNECTING TO LACE...' : 'CONNECT LACE WALLET'}
-            <ChevronRight size={16} />
-          </button>
+          availableWallets.length > 1 ? (
+            availableWallets.map((w) => (
+              <button
+                key={w.id}
+                className="btn-tech primary"
+                onClick={() => connectWallet(w.id)}
+                disabled={isConnecting}
+              >
+                <Wallet size={16} />
+                {isConnecting ? `CONNECTING TO ${w.name.toUpperCase()}...` : `CONNECT ${w.name.toUpperCase()}`}
+                <ChevronRight size={16} />
+              </button>
+            ))
+          ) : (
+            <button className="btn-tech primary" onClick={() => connectWallet()} disabled={isConnecting}>
+              <Wallet size={16} />
+              {isConnecting ? 'CONNECTING TO WALLET...' : 'CONNECT LACE / 1 AM WALLET'}
+              <ChevronRight size={16} />
+            </button>
+          )
         ) : (
           <button className="btn-tech" onClick={disconnectWallet}>
             <LogOut size={16} />

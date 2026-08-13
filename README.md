@@ -8,13 +8,13 @@
 
 ## Contract Address
 
-| Network  | Address                                                          |
-|----------|------------------------------------------------------------------|
-| Preprod  | `9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417` |
+| Network  | Address                                                          | Explorer Link |
+|----------|------------------------------------------------------------------|---------------|
+| Preview  | `ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769` | [View on Midnight Preview Explorer](https://explorer.preview.midnight.network/contract/ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769) |
 
 ## What This Does
 
-This DApp implements a privacy-preserving counter on the Midnight Network. It allows users to connect their Lace Wallet and execute zero-knowledge circuit calls (`incrementBy`) to update a global counter on the Midnight ledger while keeping the increment amount (private witness) completely private off-chain until explicitly disclosed via zero-knowledge proofs.
+This DApp implements a privacy-preserving counter on the Midnight Network (Preview Testnet). It allows users to connect their Lace Wallet or 1 AM Wallet and execute zero-knowledge circuit calls (`incrementBy`) to update a global counter on the Midnight ledger while keeping the increment amount (private witness) completely private off-chain until explicitly disclosed via zero-knowledge proofs.
 
 ## Privacy Model
 
@@ -31,15 +31,15 @@ An on-chain observer or block explorer sees the updated public `count` value on 
 
 ## Tech Stack
 
-- **Midnight Network**: Privacy-focused zero-knowledge blockchain platform
+- **Midnight Network**: Privacy-focused zero-knowledge blockchain platform (Preview Testnet)
 - **Compact Language**: Smart contract domain-specific language (v0.23)
 - **Midnight.js SDK**: DApp Connector API (`@midnight-ntwrk/dapp-connector-api`)
 - **React / Vite**: Modern TypeScript frontend UI framework
-- **Lace Wallet**: Browser wallet extension for Midnight network transactions
+- **Lace / 1 AM Wallet**: Browser wallet extensions for Midnight network transactions
 
 ## Prerequisites
 
-- **Lace Wallet** browser extension installed
+- **Lace Wallet** or **1 AM Wallet** browser extension installed (set to Preview Testnet)
 - **Node.js** v22 or higher
 
 ## Run Locally
@@ -71,7 +71,7 @@ An on-chain observer or block explorer sees the updated public `count` value on 
 ![Compact Contract Compilation](docs/screenshots/compile.png)
 
 ### Network Deployment
-![Contract Deployment to Preprod](docs/screenshots/deploy.png)
+![Contract Deployment to Preview](docs/screenshots/deploy.png)
 
 ## Demo Video
 

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Zap, Cpu, ExternalLink, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import React from 'react';
+import { Zap, Cpu, ExternalLink, CheckCircle2, ShieldCheck, Loader2, Rocket } from 'lucide-react';
 import { useMidnight } from '../hooks/useMidnight';
 
 interface CircuitCallProps {
@@ -7,58 +7,38 @@ interface CircuitCallProps {
 }
 
 export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) => {
-  const { isConnected, counterState, isLoadingState, tnightBalance, dustBalance, fetchLiveContractState, connectedAPI } = useMidnight();
-  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
-  const [isProving, setIsProving] = useState<boolean>(false);
-  const [submissionStatus, setSubmissionStatus] = useState<string | null>(null);
+  const {
+    isConnected,
+    counterState,
+    isLoadingState,
+    tnightBalance,
+    dustBalance,
+    fetchLiveContractState,
+    contractAddress,
+    isDeploying,
+    isCallingCircuit,
+    lastTxHash,
+    error,
+    deployContract,
+    callIncrementCircuit,
+  } = useMidnight();
 
-  const handleIncrementCircuit = async () => {
-    if (!connectedAPI) {
-      setSubmissionStatus('Error: Wallet API not connected.');
-      return;
-    }
-
-    setIsProving(true);
-    setSubmissionStatus('Requesting Wallet Signature to simulate ZK Proof generation...');
-
-    // Private witness input (secretIncrement) is evaluated off-chain inside ZK circuit
-    const secretIncrement = 1;
-
-    try {
-      // In a full Midnight DApp, we would use DAppConnectorProofProvider and WalletProvider here.
-      // Since they are not configured in this project's dependencies, we PROVE wallet interaction 
-      // by requesting a cryptographic signature from the Lace Wallet for the circuit call!
-      const signPayload = `Counter.compact: incrementBy(${secretIncrement})`;
-      let dynamicHash = '';
-
-      if (typeof connectedAPI.signData === 'function') {
-        const signatureResponse = await connectedAPI.signData(signPayload, { encoding: 'text', keyType: 'unshielded' });
-        // Use the first 64 chars of the signature as our mock txHash to prove it's NOT hardcoded!
-        dynamicHash = signatureResponse.signature.substring(0, 66);
-      } else {
-        // Fallback if signData isn't supported by this wallet version
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        dynamicHash = `0x${Date.now().toString(16)}...`;
-      }
-
-      const newCount = counterState + secretIncrement;
-
-      setLastTxHash(dynamicHash);
-      setSubmissionStatus('Wallet interaction successful! State updated.');
-      
-      // Refresh live contract state from indexer
-      fetchLiveContractState();
-
-      if (onCircuitExecuted) {
-        onCircuitExecuted(dynamicHash, newCount);
-      }
-    } catch (err: any) {
-      console.error('Circuit error:', err);
-      setSubmissionStatus(`Error: ${err?.message || 'Wallet rejected the request.'}`);
-    } finally {
-      setIsProving(false);
+  const handleDeploy = async () => {
+    const addr = await deployContract();
+    if (addr) {
+      console.log('✅ Contract deployed at:', addr);
     }
   };
+
+  const handleIncrementCircuit = async () => {
+    const txHash = await callIncrementCircuit();
+    if (txHash && onCircuitExecuted) {
+      onCircuitExecuted(txHash, (counterState ?? 0) + 1);
+    }
+  };
+
+  const displayCount = counterState !== null ? counterState : '—';
+  const isProving = isCallingCircuit;
 
   return (
     <div className="left-column">
@@ -71,11 +51,11 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           </span>
           <span className="panel-label">
             <CheckCircle2 size={14} />
-            PUBLIC_LEDGER_COUNT: {isLoadingState ? 'SYNCING...' : counterState}
+            PUBLIC_LEDGER_COUNT: {isLoadingState ? 'SYNCING...' : displayCount}
           </span>
         </div>
 
-        {/* Mandatory Privacy Guarantee Label */}
+        {/* Privacy Guarantee Label */}
         <div
           style={{
             padding: '0.75rem 1.25rem',
@@ -92,20 +72,34 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           }}
         >
           <ShieldCheck size={18} style={{ color: '#ffffff' }} />
-          <span style={{ fontWeight: 600, letterSpacing: '0.02em' }}>Proved without revealing your input</span>
+          <span style={{ fontWeight: 600, letterSpacing: '0.02em' }}>
+            {contractAddress ? 'Real wallet proof flow active' : 'Deploy contract to begin'}
+          </span>
         </div>
 
-        <div className="metric-large">COUNT: {isLoadingState ? '...' : counterState}</div>
+        <div className="metric-large">COUNT: {isLoadingState ? '...' : displayCount}</div>
 
         <div className="hud-actions">
-          <button
-            className="btn-tech primary"
-            onClick={handleIncrementCircuit}
-            disabled={!isConnected || isProving}
-          >
-            {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
-            {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
-          </button>
+          {/* Show Deploy button if no contract deployed */}
+          {!contractAddress ? (
+            <button
+              className="btn-tech primary"
+              onClick={handleDeploy}
+              disabled={!isConnected || isDeploying}
+            >
+              {isDeploying ? <Loader2 size={16} className="spin-icon" /> : <Rocket size={16} />}
+              {isDeploying ? 'DEPLOYING CONTRACT...' : 'DEPLOY COUNTER CONTRACT'}
+            </button>
+          ) : (
+            <button
+              className="btn-tech primary"
+              onClick={handleIncrementCircuit}
+              disabled={!isConnected || isProving || isDeploying}
+            >
+              {isProving ? <Loader2 size={16} className="spin-icon" /> : <Zap size={16} />}
+              {isProving ? 'GENERATING ZK PROOF...' : 'CALL INCREMENT CIRCUIT'}
+            </button>
+          )}
           <button
             className="btn-tech"
             onClick={() => window.open('https://midnight-tmnight-preview.nethermind.dev', '_blank')}
@@ -115,11 +109,51 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
           </button>
         </div>
 
-        {/* Proof & Transaction Status Result Display */}
-        {submissionStatus && (
+        {/* Contract Address Display */}
+        {contractAddress && (
           <div
             style={{
-              marginTop: '1.5rem',
+              marginTop: '1rem',
+              padding: '0.75rem 1.25rem',
+              background: 'rgba(20, 20, 20, 0.9)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '10px',
+              fontFamily: 'JetBrains Mono',
+              fontSize: '0.78rem',
+            }}
+          >
+            <div style={{ color: '#a3a3a3', marginBottom: '4px' }}>CONTRACT_ADDRESS:</div>
+            <div style={{ color: '#ffffff', fontWeight: 600, wordBreak: 'break-all' }}>
+              {contractAddress}
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1.25rem',
+              background: 'rgba(255, 50, 50, 0.1)',
+              border: '1px solid rgba(255, 50, 50, 0.3)',
+              borderRadius: '10px',
+              fontFamily: 'JetBrains Mono',
+              fontSize: '0.78rem',
+              color: '#ff6b6b',
+              wordBreak: 'break-all',
+            }}
+          >
+            ❌ {error}
+          </div>
+        )}
+
+        {/* Transaction Status */}
+        {lastTxHash && (
+          <div
+            style={{
+              marginTop: '1rem',
               padding: '1rem 1.25rem',
               background: 'rgba(20, 20, 20, 0.9)',
               backdropFilter: 'blur(12px)',
@@ -141,13 +175,11 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
               }}
             >
               <CheckCircle2 size={16} />
-              {submissionStatus}
+              On-chain transaction confirmed!
             </div>
-            {lastTxHash && (
-              <div style={{ color: '#a3a3a3', wordBreak: 'break-all', marginTop: '6px', fontSize: '0.78rem' }}>
-                ONCHAIN_TX_HASH: <span style={{ color: '#ffffff', fontWeight: 600 }}>{lastTxHash}</span>
-              </div>
-            )}
+            <div style={{ color: '#a3a3a3', wordBreak: 'break-all', marginTop: '6px', fontSize: '0.78rem' }}>
+              ONCHAIN_TX_HASH: <span style={{ color: '#ffffff', fontWeight: 600 }}>{lastTxHash}</span>
+            </div>
           </div>
         )}
       </div>
@@ -168,8 +200,8 @@ export const CircuitCall: React.FC<CircuitCallProps> = ({ onCircuitExecuted }) =
 
         <div className="asset-box-tech">
           <div className="asset-tag">CONTRACT :: COUNTER.COMPACT</div>
-          <div className="asset-val">COUNT: {counterState}</div>
-          <div className="asset-sub">PUBLIC_LEDGER_STATE</div>
+          <div className="asset-val">COUNT: {displayCount}</div>
+          <div className="asset-sub">{contractAddress ? 'ON-CHAIN STATE' : 'READY TO DEPLOY'}</div>
         </div>
       </div>
     </div>

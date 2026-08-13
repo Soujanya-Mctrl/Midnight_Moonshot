@@ -52,7 +52,7 @@ export function App() {
 
         <div className="hud-status-badge">
           <span className="status-dot"></span>
-          PREPROD_TESTNET [LIVE]
+          PREVIEW [LIVE]
         </div>
       </header>
 
@@ -90,7 +90,7 @@ export function App() {
               fontSize: '0.85rem',
             }}
           >
-            NO ON-CHAIN TRANSACTIONS SUBMITTED IN THIS SESSION. CONNECT LACE WALLET AND CALL CIRCUIT ABOVE.
+            NO ON-CHAIN TRANSACTIONS SUBMITTED IN THIS SESSION. CONNECT A WALLET, DEPLOY THE CONTRACT, THEN CALL THE CIRCUIT ABOVE.
           </div>
         ) : (
           <table className="explorer-table">
