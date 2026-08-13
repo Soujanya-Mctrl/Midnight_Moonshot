@@ -131,31 +131,21 @@ describe(`Hello World Contract (${network})`, () => {
       logger.info(`Wallet NIGHT balance on '${network}': ${nightBalance}`);
     }
 
-    // Ensure wallet has DUST coins (registers NIGHT UTXOs if needed) to avoid Custom error 170 (InsufficientDust)
-    const state: any = await Rx.firstValueFrom(wallet.wallet.state());
-    if (!state.dust?.availableCoins || state.dust.availableCoins.length === 0) {
-      const nightUtxos = state.unshielded?.availableCoins || [];
-      if (nightUtxos.length > 0) {
-        logger.info(`Registering ${nightUtxos.length} NIGHT UTXOs for DUST generation on ${network}...`);
-        try {
-          const recipe = await wallet.wallet.registerNightUtxosForDustGeneration(
-            nightUtxos,
-            wallet.unshieldedKeystore.getPublicKey(),
-            (payload: Uint8Array) => wallet.unshieldedKeystore.signData(payload),
-          );
-          const finalized = await wallet.wallet.finalizeRecipe(recipe);
-          await wallet.wallet.submitTransaction(finalized);
-        } catch (err: any) {
-          logger.info(`DUST registration notice: ${err?.message || err}`);
-        }
-      }
-      logger.info('Waiting for DUST coins to accrue...');
-      await Rx.firstValueFrom(
-        wallet.wallet.state().pipe(
-          Rx.filter((s: any) => (s.dust?.availableCoins?.length || 0) > 0),
+    // Ensure wallet has spendable DUST coins to avoid Custom error 170 (InsufficientDust)
+    logger.info('Waiting for wallet DUST coins to be spendable...');
+    await Rx.firstValueFrom(
+      wallet.wallet.state().pipe(
+        Rx.tap((s: any) =>
+          logger.info(`DUST check: ${s.dust?.availableCoins?.length ?? 0} spendable coin(s)`),
         ),
-      );
-    }
+        Rx.filter((s: any) => (s.dust?.availableCoins?.length || 0) > 0),
+        Rx.take(1),
+        Rx.timeout({
+          each: 60_000,
+          with: () => Rx.throwError(() => new Error('Timed out waiting for available DUST coins')),
+        }),
+      ),
+    );
 
     providers = buildProviders(wallet, zkConfigPath, config);
     logger.info(`Providers initialized on '${network}'. Ready to test!`);

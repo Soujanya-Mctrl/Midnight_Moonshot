@@ -16,6 +16,11 @@
 
 This DApp implements a privacy-preserving counter on the Midnight Network (Preview Testnet). It allows users to connect their Lace Wallet or 1 AM Wallet and execute zero-knowledge circuit calls (`incrementBy`) to update a global counter on the Midnight ledger while keeping the increment amount (private witness) completely private off-chain until explicitly disclosed via zero-knowledge proofs.
 
+## Initial Product Idea
+
+### Anonymous Proof-of-Action Reputation Ledger
+This application serves as the foundation for a privacy-preserving reputation and engagement protocol on Midnight Network. Users can anonymously prove off-chain actions or verifiable achievements—such as voting participation, tier progression, or private credentials—to incrementally update their on-chain score via zero-knowledge proofs (`incrementBy`) without disclosing their identity, transaction history, or sensitive private payload inputs on the public ledger.
+
 ## Privacy Model
 
 - **What is PUBLIC:**
@@ -41,13 +46,14 @@ An on-chain observer or block explorer sees the updated public `count` value on 
 
 - **Lace Wallet** or **1 AM Wallet** browser extension installed (set to Preview Testnet)
 - **Node.js** v22 or higher
+- **Docker Engine** (for running local proof server and devnet stack)
 
 ## Run Locally
 
 1. **Clone the repository:**
    ```bash
-   git clone <your-repo-url>
-   cd L1_Midnight_Setup
+   git clone https://github.com/Soujanya-Mctrl/Midnight_Moonshot.git
+   cd Midnight_Moonshot
    ```
 
 2. **Install dependencies:**
@@ -64,6 +70,96 @@ An on-chain observer or block explorer sees the updated public `count` value on 
    ```bash
    npm run build
    ```
+
+## Create the Compact Smart Contract
+
+```compact
+pragma language_version 0.23;
+
+export ledger count: Uint<32>;
+
+export circuit incrementBy(secretIncrement: Uint<32>): [] {
+  count = (count + disclose(secretIncrement)) as Uint<32>;
+}
+```
+
+- `pragma language_version` specifies which version of Compact your contract uses.
+- `ledger count` creates a state variable named `count` that stores an integer value in the on-chain state. On-chain state is public and persistent on the blockchain.
+- `circuit incrementBy` is a Compact circuit (function) that defines the logic to modify on-chain state.
+- `secretIncrement: Uint<32>` is the input parameter. *Circuit parameters are always private by default.* The `disclose()` function marks the private value as safe to store publicly. Without it, trying to assign `secretIncrement` directly to the ledger returns a compiler error.
+
+## Compile the Contract
+
+Compiling transforms your Compact code into zero-knowledge circuits, generates cryptographic keys, and creates TypeScript APIs and a JavaScript implementation for the contract to be used by DApps.
+
+Run the compiler:
+
+```bash
+compact compile contracts/counter.compact managed/counter
+```
+
+You should see output similar to:
+
+```
+Compiling 1 circuits:
+  circuit "incrementBy" (k=6, rows=26)
+```
+
+The compilation process will:
+1. Parse and validate your Compact code.
+2. Generate zero-knowledge circuits from your logic.
+3. Create proving and verifying keys for the circuits.
+4. Generate the TypeScript API and JavaScript implementation for the contract.
+
+When compilation completes, you'll see the generated directory structure:
+
+```
+contracts/
+├── counter.compact              # Counter Compact smart contract
+├── hello-world.compact          # Hello World Compact smart contract
+├── counter-index.ts             # Counter contract barrel file
+├── index.ts                     # Hello World contract barrel file
+└── managed/                     # Compiled ZK circuit artifacts
+     └── counter/
+          ├── compiler/          # Compiler metadata JSON
+          ├── contract/          # JavaScript runtime & TypeScript definitions
+          ├── keys/              # Prover (.prover) and verifier (.verifier) keys
+          └── zkir/              # Zero-Knowledge Intermediate Representation (.zkir)
+```
+
+Here's what each directory contains:
+- **contract/**: The compiled contract artifacts, which include the JavaScript implementation and type definitions.
+- **keys/**: Cryptographic proving and verifying keys that enable zero-knowledge proofs.
+- **zkir/**: Zero-Knowledge Intermediate Representation—the bridge between Compact and the ZK backend.
+- **compiler/**: Compiler-generated JSON output that other tools can use to understand the contract structure.
+
+## Deploy Contract to Local Devnet
+
+Be sure the Docker engine is running and start the local environment stack:
+
+```bash
+yarn env:up
+```
+
+Run the local test suite:
+
+```bash
+yarn test:local
+```
+
+Stop the Docker containers when done:
+
+```bash
+yarn env:down
+```
+
+## Deploy Contract to Live Testnet (Preview / Preprod)
+
+To run contract scripts on Preview or Preprod:
+1. Generate a wallet on the target network and fund it via the network's faucet page — [Preview](https://midnight-tmnight-preview.nethermind.dev/) or [Preprod](https://midnight-tmnight-preprod.nethermind.dev/).
+2. Create `.env.<network>` (e.g. `.env.preview`) based on `.env.preview.example`.
+3. Start the proof server: `yarn proof:up`
+4. Run deployment script: `yarn deploy:preview` or run tests: `yarn test:preview`.
 
 ## Screenshots
 
