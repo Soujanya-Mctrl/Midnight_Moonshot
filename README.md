@@ -10,7 +10,7 @@
 
 | Network  | Address                                                          | Explorer Link |
 |----------|------------------------------------------------------------------|---------------|
-| Preview  | `ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769` | [View on Midnight Preview Explorer](https://explorer.preview.midnight.network/contract/ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769) |
+| Preview  | `ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769` | [View on Midnight Preview Explorer](https://explorer.preview.midnight.network/contracts/stream/ef8e0e0d3672f2646f30e317d22e276646d72e3d34c7110126a028e38009a769) |
 
 ## What This Does
 
