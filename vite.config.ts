@@ -14,14 +14,9 @@ export default defineConfig({
     target: 'esnext',
   },
   optimizeDeps: {
-    include: ['object-inspect', 'buffer'],
+    include: ['object-inspect', 'buffer', '@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/ledger-v8', '@midnight-ntwrk/onchain-runtime-v3'],
     esbuildOptions: {
       target: 'esnext',
     },
-    // Exclude WASM-heavy Midnight packages from pre-bundling
-    exclude: [
-      '@midnight-ntwrk/compact-runtime',
-      '@midnight-ntwrk/ledger-v8',
-    ],
   },
 });

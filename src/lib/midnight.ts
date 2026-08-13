@@ -258,26 +258,36 @@ export function createCounterPublicDataProvider(indexerUri: string, indexerWsUri
         return base.queryContractState(contractAddress, config);
       }
 
-      const action = await fetchLatestContractAction(contractAddress);
-      return action?.state ? ContractState.deserialize(fromHex(action.state)) : null;
+      try {
+        const action = await fetchLatestContractAction(contractAddress);
+        return action?.state ? ContractState.deserialize(fromHex(action.state)) : null;
+      } catch (err) {
+        console.warn('queryContractState warning:', err);
+        return null;
+      }
     },
     async queryZSwapAndContractState(contractAddress: string, config?: any) {
       if (config) {
         return base.queryZSwapAndContractState(contractAddress, config);
       }
 
-      const action = await fetchLatestContractAction(contractAddress);
-      if (!action?.state || !action?.zswapState) {
+      try {
+        const action = await fetchLatestContractAction(contractAddress);
+        if (!action?.state || !action?.zswapState) {
+          return null;
+        }
+
+        return [
+          ZswapChainState.deserialize(fromHex(action.zswapState)),
+          ContractState.deserialize(fromHex(action.state)),
+          action.transaction?.block?.ledgerParameters
+            ? LedgerParameters.deserialize(fromHex(action.transaction.block.ledgerParameters))
+            : LedgerParameters.initialParameters(),
+        ];
+      } catch (err) {
+        console.warn('queryZSwapAndContractState warning:', err);
         return null;
       }
-
-      return [
-        ZswapChainState.deserialize(fromHex(action.zswapState)),
-        ContractState.deserialize(fromHex(action.state)),
-        action.transaction?.block?.ledgerParameters
-          ? LedgerParameters.deserialize(fromHex(action.transaction.block.ledgerParameters))
-          : LedgerParameters.initialParameters(),
-      ];
     },
   };
 }
