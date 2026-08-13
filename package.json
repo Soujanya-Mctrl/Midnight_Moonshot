@@ -66,7 +66,12 @@
   "resolutions": {
     "@midnight-ntwrk/wallet-sdk": "1.2.0",
     "@midnight-ntwrk/ledger-v8": "8.1.1",
-    "@midnight-ntwrk/compact-runtime": "0.16.0"
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "brace-expansion": "2.1.4",
+    "nanoid": "3.3.17",
+    "postcss": "8.5.23",
+    "undici": "8.9.0",
+    "uuid": "11.1.1"
   },
   "packageManager": "yarn@1.22.22"
 }
