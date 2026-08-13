@@ -1,11 +1,13 @@
 # Node & Build Outputs
 /node_modules
-/contracts/managed
-/managed
 /logs
 /dist
 /.midnight-expert
 /midnight-level-db
+
+# Allow compiled counter contract managed files
+!/managed/counter
+!/managed/counter/**
 
 # Agent & Claude config directories
 .agents
