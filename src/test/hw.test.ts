@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { WebSocket } from 'ws';
+import * as Rx from 'rxjs';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   deployContract,
@@ -128,6 +129,32 @@ describe(`Hello World Contract (${network})`, () => {
         wallet.unshieldedKeystore,
       );
       logger.info(`Wallet NIGHT balance on '${network}': ${nightBalance}`);
+    }
+
+    // Ensure wallet has DUST coins (registers NIGHT UTXOs if needed) to avoid Custom error 170 (InsufficientDust)
+    const state: any = await Rx.firstValueFrom(wallet.wallet.state());
+    if (!state.dust?.availableCoins || state.dust.availableCoins.length === 0) {
+      const nightUtxos = state.unshielded?.availableCoins || [];
+      if (nightUtxos.length > 0) {
+        logger.info(`Registering ${nightUtxos.length} NIGHT UTXOs for DUST generation on ${network}...`);
+        try {
+          const recipe = await wallet.wallet.registerNightUtxosForDustGeneration(
+            nightUtxos,
+            wallet.unshieldedKeystore.getPublicKey(),
+            (payload: Uint8Array) => wallet.unshieldedKeystore.signData(payload),
+          );
+          const finalized = await wallet.wallet.finalizeRecipe(recipe);
+          await wallet.wallet.submitTransaction(finalized);
+        } catch (err: any) {
+          logger.info(`DUST registration notice: ${err?.message || err}`);
+        }
+      }
+      logger.info('Waiting for DUST coins to accrue...');
+      await Rx.firstValueFrom(
+        wallet.wallet.state().pipe(
+          Rx.filter((s: any) => (s.dust?.availableCoins?.length || 0) > 0),
+        ),
+      );
     }
 
     providers = buildProviders(wallet, zkConfigPath, config);
