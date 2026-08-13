@@ -53,14 +53,14 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     ttl: Date = ttlOneHour(),
   ): Promise<FinalizedTransaction> {
     const recipe = await this.wallet.balanceUnboundTransaction(
-      tx,
+      tx as any,
       {
         shieldedSecretKeys: this.zswapSecretKeys,
         dustSecretKey: this.dustSecretKey,
       },
       { ttl },
     );
-    return await this.wallet.finalizeRecipe(recipe);
+    return (await this.wallet.finalizeRecipe(recipe)) as any;
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
