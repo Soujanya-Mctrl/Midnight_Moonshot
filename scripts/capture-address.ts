@@ -2,7 +2,7 @@ import { MidnightWalletProvider } from '../src/wallet.js';
 import { getConfig } from '../src/config.js';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledHelloWorldContract, zkConfigPath } from '../contracts/index.js';
+import { CompiledFeedbackContract, zkConfigPath } from '../contracts/index.js';
 import { buildProviders } from '../src/providers.js';
 import { WebSocket } from 'ws';
 import pino from 'pino';
@@ -53,12 +53,11 @@ async function printContractAddress() {
 
   const providers = buildProviders(wallet, zkConfigPath, config);
 
-  // Mock submitTx to capture the transaction object and contract address before submitting
   providers.midnightProvider.submitTx = async (tx: any) => {
     const address = tx.public?.contractAddress || tx.contractAddress;
     console.log('\n=====================================');
     console.log('📍 PREVIEW CONTRACT ADDRESS:', address);
-    console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contract/${address}`);
+    console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contracts/stream/${address}`);
     console.log('=====================================\n');
     throw new Error('CAPTURED_ADDRESS_SUCCESS');
   };
@@ -67,8 +66,8 @@ async function printContractAddress() {
 
   try {
     await (deployContract as any)(providers, {
-      compiledContract: CompiledHelloWorldContract,
-      privateStateId: 'CounterPrivateState',
+      compiledContract: CompiledFeedbackContract,
+      privateStateId: 'FeedbackPrivateState',
       initialPrivateState: {},
       args: [],
     });

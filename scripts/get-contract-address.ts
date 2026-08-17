@@ -2,7 +2,7 @@ import { MidnightWalletProvider } from '../src/wallet.js';
 import { getConfig } from '../src/config.js';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createUnprovenDeployTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledHelloWorldContract, zkConfigPath } from '../contracts/index.js';
+import { CompiledFeedbackContract, zkConfigPath } from '../contracts/index.js';
 import { buildProviders } from '../src/providers.js';
 import { WebSocket } from 'ws';
 import pino from 'pino';
@@ -57,20 +57,16 @@ async function getAddressFromUnprovenTx() {
 
   try {
     const unprovenTx: any = await (createUnprovenDeployTx as any)(providers, {
-      compiledContract: CompiledHelloWorldContract,
-      privateStateId: 'CounterPrivateState',
+      compiledContract: CompiledFeedbackContract,
+      privateStateId: 'FeedbackPrivateState',
       initialPrivateState: {},
       args: [],
     });
 
-    console.log('\n=====================================');
-    console.log('UnprovenTx object keys:', Object.keys(unprovenTx));
-    console.log('UnprovenTx.deployTxData keys:', unprovenTx.deployTxData ? Object.keys(unprovenTx.deployTxData) : 'none');
-    console.log('UnprovenTx.deployTxData.public keys:', unprovenTx.deployTxData?.public ? Object.keys(unprovenTx.deployTxData.public) : 'none');
-
     const address = unprovenTx.deployTxData?.public?.contractAddress || unprovenTx.public?.contractAddress;
+    console.log('\n=====================================');
     console.log(`📍 PREVIEW CONTRACT ADDRESS: ${address}`);
-    console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contract/${address}`);
+    console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contracts/stream/${address}`);
     console.log('=====================================\n');
   } catch (err: any) {
     console.error('Error generating unproven deploy tx:', err?.message || err);

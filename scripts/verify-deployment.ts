@@ -1,17 +1,37 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Load .env into process.env if present
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+        const [k, ...v] = trimmed.split('=');
+        if (k && v.length > 0 && !process.env[k.trim()]) {
+          process.env[k.trim()] = v.join('=').trim();
+        }
+      }
+    }
+  }
+} catch (e) {
+  // ignore
+}
+
 import { getConfig } from '../src/config.js';
 
 interface GraphQLResponse {
   data?: {
-    contractState?: {
-      data?: string;
+    contractAction?: {
+      state?: string;
+      zswapState?: string;
     } | null;
   };
   errors?: Array<{ message: string }>;
 }
 
-/**
- * Verifies that a deployed Midnight contract address is queryable on-chain via the Indexer GraphQL API.
- */
 export async function verifyContractDeployment(
   contractAddress: string,
   network = process.env.MIDNIGHT_NETWORK || 'preview',
@@ -22,9 +42,10 @@ export async function verifyContractDeployment(
   console.log(`🌐 Indexer URL:     ${config.indexer}\n`);
 
   const query = `
-    query GetContractState($address: String!) {
-      contractState(address: $address) {
-        data
+    query LatestContractAction($address: HexEncoded!) {
+      contractAction(address: $address) {
+        state
+        zswapState
       }
     }
   `;
@@ -53,11 +74,11 @@ export async function verifyContractDeployment(
       return false;
     }
 
-    const stateData = result.data?.contractState?.data;
+    const stateData = result.data?.contractAction?.state;
 
     if (stateData !== undefined && stateData !== null) {
-      console.log('✅ Verification SUCCESS: Contract exists and state is live on-chain!');
-      console.log(`📊 Raw Ledger State Data: ${stateData}\n`);
+      console.log('✅ Verification SUCCESS: Contract exists and is live on Midnight Preview ledger!');
+      console.log(`📊 Raw Ledger State Data: ${stateData.substring(0, 64)}...\n`);
       return true;
     } else {
       console.log('⚠️ Contract address query returned null state (contract may still be deploying or indexing).');
@@ -70,5 +91,5 @@ export async function verifyContractDeployment(
 }
 
 // CLI entrypoint
-const addressArg = process.argv[2] || '9a6287e343929ac29e6aa910eca52a0db7ecd9dc794ad6658f2619df57ea1417';
+const addressArg = process.argv[2] || process.env.VITE_CONTRACT_ADDRESS || '07ea1c598023eade80a88d01d30ef0758415be7dee6fe6e5a95a22fc69e94ea5';
 verifyContractDeployment(addressArg).catch(console.error);

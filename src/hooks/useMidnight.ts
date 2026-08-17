@@ -1,17 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createUnprovenCallTx, createUnprovenDeployTx, submitTxAsync } from '@midnight-ntwrk/midnight-js-contracts';
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ConnectedSession, WalletProviderEntry } from '../lib/midnight';
+import type { ConnectedSession, FeedbackLedgerData, WalletProviderEntry } from '../lib/midnight';
 import {
-  COUNTER_CIRCUIT_ID,
+  FEEDBACK_CIRCUIT_ID,
   connectInjectedWallet,
-  createCounterCompiledContract,
-  createCounterPublicDataProvider,
+  createFeedbackCompiledContract,
+  createFeedbackPublicDataProvider,
   createConnectedSession,
   detectInjectedWalletProviders,
   formatNetworkLabel,
-  getCounterLedgerCount,
-  waitForCounterLedgerCount,
+  getFeedbackLedgerState,
+  waitForFeedbackLedgerState,
   waitForTransactionIndexing,
 } from '../lib/midnight';
 
@@ -29,7 +29,7 @@ export interface MidnightHookState {
   network: string;
   error: string | null;
   isConnecting: boolean;
-  counterState: number | null;
+  feedbackState: FeedbackLedgerData | null;
   isLoadingState: boolean;
   tnightBalance: string;
   dustBalance: string;
@@ -43,13 +43,14 @@ export interface MidnightHookState {
   connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
   clearError: () => void;
+  resetContractAddress: () => void;
   fetchLiveContractState: () => Promise<void>;
   deployContract: () => Promise<string | null>;
-  callIncrementCircuit: () => Promise<string | null>;
+  submitAnonymousFeedback: (rating: number, comment?: string) => Promise<string | null>;
   connectedAPI: any;
 }
 
-const LOCAL_STORAGE_KEY = 'midnight_counter_contract_address';
+const LOCAL_STORAGE_KEY = 'midnight_feedback_contract_address';
 
 const MidnightContext = createContext<MidnightHookState | undefined>(undefined);
 
@@ -123,7 +124,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [network, setNetwork] = useState('PREVIEW');
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [counterState, setCounterState] = useState<number | null>(null);
+  const [feedbackState, setFeedbackState] = useState<FeedbackLedgerData | null>(null);
   const [isLoadingState, setIsLoadingState] = useState(false);
   const [tnightBalance, setTnightBalance] = useState('0.00');
   const [dustBalance, setDustBalance] = useState('0.00');
@@ -141,8 +142,9 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [isCallingCircuit, setIsCallingCircuit] = useState(false);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [connectedAPI, setConnectedAPI] = useState<any>(null);
+
   const previewIndexerProvider = useMemo(
-    () => createCounterPublicDataProvider(
+    () => createFeedbackPublicDataProvider(
       'https://indexer.preview.midnight.network/api/v4/graphql',
       'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
     ),
@@ -174,7 +176,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const fetchLiveContractState = useCallback(async () => {
     if (!contractAddress) {
-      setCounterState(null);
+      setFeedbackState(null);
       return;
     }
 
@@ -182,8 +184,8 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const provider = session?.providers.publicDataProvider ?? previewIndexerProvider;
       if (provider) {
-        const count = await getCounterLedgerCount(provider, contractAddress);
-        setCounterState(count === null ? null : Number(count));
+        const state = await getFeedbackLedgerState(provider, contractAddress);
+        setFeedbackState(state);
       }
     } finally {
       setIsLoadingState(false);
@@ -235,7 +237,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const deployContract = useCallback(async (): Promise<string | null> => {
     if (!session) {
-      setError('Connect a wallet before deploying the contract.');
+      setError('Connect a wallet before deploying the feedback contract.');
       return null;
     }
 
@@ -243,7 +245,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     setError(null);
 
     try {
-      const compiledContract = createCounterCompiledContract();
+      const compiledContract = createFeedbackCompiledContract();
       const unprovenDeployTx = await createUnprovenDeployTx(session.providers as any, {
         compiledContract,
         signingKey: sampleSigningKey(),
@@ -259,7 +261,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
       await session.providers.privateStateProvider.setContractAddress(contractAddressHex);
       await session.providers.privateStateProvider.setSigningKey(contractAddressHex, unprovenDeployTx.private.signingKey);
       await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
-      await waitForCounterLedgerCount(session.providers.publicDataProvider, contractAddressHex);
+      await waitForFeedbackLedgerState(session.providers.publicDataProvider, contractAddressHex);
       await fetchLiveContractState();
 
       return contractAddressHex;
@@ -271,49 +273,53 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, [fetchLiveContractState, session]);
 
-  const callIncrementCircuit = useCallback(async (): Promise<string | null> => {
-    if (!session) {
-      setError('Connect a wallet before calling the circuit.');
-      return null;
-    }
+  const submitAnonymousFeedback = useCallback(
+    async (rating: number, comment?: string): Promise<string | null> => {
+      if (!session) {
+        setError('Connect a wallet before submitting anonymous feedback.');
+        return null;
+      }
 
-    if (!contractAddress) {
-      setError('Deploy the contract before calling the circuit.');
-      return null;
-    }
+      if (!contractAddress) {
+        setError('Contract address not found.');
+        return null;
+      }
 
-    setIsCallingCircuit(true);
-    setError(null);
+      const ratingBigInt = BigInt(Math.max(1, Math.min(5, Math.round(rating))));
+      setIsCallingCircuit(true);
+      setError(null);
 
-    try {
-      const compiledContract = createCounterCompiledContract();
-      const previousCount = counterState !== null ? BigInt(counterState) : null;
-      const unprovenCallTx = await createUnprovenCallTx(session.providers as any, {
-        compiledContract,
-        contractAddress,
-        circuitId: COUNTER_CIRCUIT_ID,
-        args: [1n],
-      });
+      try {
+        const compiledContract = createFeedbackCompiledContract();
+        const previousTotal = feedbackState ? feedbackState.totalResponses : 0;
+        const unprovenCallTx = await createUnprovenCallTx(session.providers as any, {
+          compiledContract,
+          contractAddress,
+          circuitId: FEEDBACK_CIRCUIT_ID,
+          args: [ratingBigInt],
+        });
 
-      const txId = await submitTxAsync(session.providers as any, {
-        unprovenTx: unprovenCallTx.private.unprovenTx,
-        circuitId: COUNTER_CIRCUIT_ID,
-      });
+        const txId = await submitTxAsync(session.providers as any, {
+          unprovenTx: unprovenCallTx.private.unprovenTx,
+          circuitId: FEEDBACK_CIRCUIT_ID,
+        });
 
-      setLastTxHash(txId);
-      await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
-      await waitForCounterLedgerCount(session.providers.publicDataProvider, contractAddress, previousCount === null ? undefined : previousCount + 1n);
-      await fetchLiveContractState();
+        setLastTxHash(txId);
+        await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
+        await waitForFeedbackLedgerState(session.providers.publicDataProvider, contractAddress, previousTotal + 1);
+        await fetchLiveContractState();
 
-      return txId;
-    } catch (callError: any) {
-      setError(callError?.message ?? 'Circuit call failed.');
-      await fetchLiveContractState();
-      return null;
-    } finally {
-      setIsCallingCircuit(false);
-    }
-  }, [contractAddress, counterState, fetchLiveContractState, session]);
+        return txId;
+      } catch (callError: any) {
+        setError(callError?.message ?? 'Anonymous feedback submission failed.');
+        await fetchLiveContractState();
+        return null;
+      } finally {
+        setIsCallingCircuit(false);
+      }
+    },
+    [contractAddress, feedbackState, fetchLiveContractState, session],
+  );
 
   const disconnectWallet = useCallback(() => {
     setIsConnected(false);
@@ -324,12 +330,21 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     setNetwork('PREVIEW');
     setTnightBalance('0.00');
     setDustBalance('0.00');
-    setCounterState(null);
+    setFeedbackState(null);
     setLastTxHash(null);
     setError(null);
   }, []);
 
   const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  const resetContractAddress = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
+    setContractAddress(null);
+    setFeedbackState(null);
     setError(null);
   }, []);
 
@@ -340,7 +355,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     network,
     error,
     isConnecting,
-    counterState,
+    feedbackState,
     isLoadingState,
     tnightBalance,
     dustBalance,
@@ -354,9 +369,10 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     connectWallet,
     disconnectWallet,
     clearError,
+    resetContractAddress,
     fetchLiveContractState,
     deployContract,
-    callIncrementCircuit,
+    submitAnonymousFeedback,
     connectedAPI,
   };
 

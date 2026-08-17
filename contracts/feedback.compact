@@ -1,0 +1,18 @@
+pragma language_version 0.23;
+
+export ledger totalResponses: Uint<32>;
+export ledger ratingSum: Uint<32>;
+export ledger positiveCount: Uint<32>;
+
+export circuit submitFeedback(rating: Uint<32>): [] {
+  assert rating >= 1 "Rating must be at least 1 star";
+  assert rating <= 5 "Rating cannot exceed 5 stars";
+
+  const discRating = disclose(rating);
+  totalResponses = (totalResponses + 1) as Uint<32>;
+  ratingSum = (ratingSum + discRating) as Uint<32>;
+
+  if (discRating >= 3) {
+    positiveCount = (positiveCount + 1) as Uint<32>;
+  }
+}

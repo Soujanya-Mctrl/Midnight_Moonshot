@@ -6,33 +6,33 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { type MidnightWalletProvider } from './wallet.js';
 import { type NetworkConfig } from './config.js';
 
-export type HelloWorldCircuits = 'storeMessage';
+export type FeedbackCircuits = 'submitFeedback';
 
-export type HelloWorldProviders = MidnightProviders<any>;
+export type FeedbackProviders = MidnightProviders<any>;
 
 export function buildProviders(
-    wallet: MidnightWalletProvider,
-    zkConfigPath: string,
-    config: NetworkConfig,
-): HelloWorldProviders {
-    const zkConfigProvider = new NodeZkConfigProvider<HelloWorldCircuits>(zkConfigPath);
+  wallet: MidnightWalletProvider,
+  zkConfigPath: string,
+  config: NetworkConfig,
+): FeedbackProviders {
+  const zkConfigProvider = new NodeZkConfigProvider<FeedbackCircuits>(zkConfigPath);
 
-    return {
-        privateStateProvider: levelPrivateStateProvider({
-            privateStateStoreName: `hello-world-${Date.now()}`,
-            privateStoragePasswordProvider: () => 'Hello-World-Test-Password',
-            accountId: wallet.getCoinPublicKey(),
-        }),
-        publicDataProvider: indexerPublicDataProvider(
-            config.indexer,
-            config.indexerWS,
-        ),
-        zkConfigProvider,
-        proofProvider: httpClientProofProvider(
-            config.proofServer,
-            zkConfigProvider,
-        ),
-        walletProvider: wallet,
-        midnightProvider: wallet,
-    };
+  return {
+    privateStateProvider: levelPrivateStateProvider({
+      privateStateStoreName: `midnight-whisper-feedback-${Date.now()}`,
+      privateStoragePasswordProvider: () => 'Midnight-Whisper-Test-Password',
+      accountId: wallet.getCoinPublicKey(),
+    }),
+    publicDataProvider: indexerPublicDataProvider(
+      config.indexer,
+      config.indexerWS,
+    ),
+    zkConfigProvider,
+    proofProvider: httpClientProofProvider(
+      config.proofServer,
+      zkConfigProvider,
+    ),
+    walletProvider: wallet,
+    midnightProvider: wallet,
+  };
 }

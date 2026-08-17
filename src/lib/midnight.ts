@@ -11,7 +11,7 @@ import type { MidnightProvider, WalletProvider } from '@midnight-ntwrk/midnight-
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { Contract as CounterContract, ledger as counterLedger } from '../../managed/counter/contract/index.js';
+import { Contract as FeedbackContract, ledger as feedbackLedger } from '../../managed/feedback/contract/index.js';
 
 export type InjectedWalletProvider = {
   connect?: (networkId: string) => Promise<any>;
@@ -40,7 +40,7 @@ export type ConnectedSession = {
   config: NormalizedWalletConfig;
   providers: {
     privateStateProvider: ReturnType<typeof createPrivateStateProvider>;
-    publicDataProvider: ReturnType<typeof createCounterPublicDataProvider>;
+    publicDataProvider: ReturnType<typeof createFeedbackPublicDataProvider>;
     zkConfigProvider: FetchZkConfigProvider<string>;
     proofProvider: { proveTx: (unprovenTx: any, config: any) => Promise<any> };
     walletProvider: WalletProvider;
@@ -50,9 +50,17 @@ export type ConnectedSession = {
   shieldedCoinPublicKey: string;
 };
 
-export const COUNTER_CONTRACT_NAME = 'CounterContract';
-export const COUNTER_CIRCUIT_ID = 'incrementBy' as const;
-export const COUNTER_CONTRACT_ASSET_BASE_URL = '/contract/counter';
+export const FEEDBACK_CONTRACT_NAME = 'FeedbackContract';
+export const FEEDBACK_CIRCUIT_ID = 'submitFeedback' as const;
+export const FEEDBACK_CONTRACT_ASSET_BASE_URL = '/contract/feedback';
+
+export interface FeedbackLedgerData {
+  totalResponses: number;
+  ratingSum: number;
+  positiveCount: number;
+  averageRating: number;
+  positivePercentage: number;
+}
 
 export function toHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -207,14 +215,14 @@ export function createPrivateStateProvider() {
   };
 }
 
-export function createCounterCompiledContract() {
-  return CompiledContract.make(COUNTER_CONTRACT_NAME, CounterContract).pipe(
+export function createFeedbackCompiledContract() {
+  return CompiledContract.make(FEEDBACK_CONTRACT_NAME, FeedbackContract).pipe(
     CompiledContract.withVacantWitnesses,
-    CompiledContract.withCompiledFileAssets(COUNTER_CONTRACT_ASSET_BASE_URL),
+    CompiledContract.withCompiledFileAssets(FEEDBACK_CONTRACT_ASSET_BASE_URL),
   );
 }
 
-export function createCounterPublicDataProvider(indexerUri: string, indexerWsUri: string) {
+export function createFeedbackPublicDataProvider(indexerUri: string, indexerWsUri: string) {
   const base = indexerPublicDataProvider(indexerUri, indexerWsUri);
 
   async function fetchLatestContractAction(contractAddress: string) {
@@ -303,7 +311,7 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
   setNetworkId(config.networkId);
 
   const zkConfigProvider = new FetchZkConfigProvider<string>(
-    new URL(`${COUNTER_CONTRACT_ASSET_BASE_URL}/`, window.location.origin).toString(),
+    new URL(`${FEEDBACK_CONTRACT_ASSET_BASE_URL}/`, window.location.origin).toString(),
     window.fetch.bind(window),
   );
 
@@ -357,7 +365,7 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
     config,
     providers: {
       privateStateProvider: createPrivateStateProvider(),
-      publicDataProvider: createCounterPublicDataProvider(config.indexerUri, config.indexerWsUri),
+      publicDataProvider: createFeedbackPublicDataProvider(config.indexerUri, config.indexerWsUri),
       zkConfigProvider,
       proofProvider,
       walletProvider,
@@ -368,40 +376,56 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
   };
 }
 
-export async function getCounterLedgerCount(publicDataProvider: ReturnType<typeof createCounterPublicDataProvider>, contractAddress: string): Promise<bigint | null> {
+export async function getFeedbackLedgerState(
+  publicDataProvider: ReturnType<typeof createFeedbackPublicDataProvider>,
+  contractAddress: string,
+): Promise<FeedbackLedgerData | null> {
   try {
     const contractState = await publicDataProvider.queryContractState(contractAddress);
     if (!contractState?.data) {
       return null;
     }
 
-    return counterLedger(contractState.data).count;
+    const state = feedbackLedger(contractState.data);
+    const totalResponses = Number(state.totalResponses);
+    const ratingSum = Number(state.ratingSum);
+    const positiveCount = Number(state.positiveCount);
+    const averageRating = totalResponses > 0 ? Number((ratingSum / totalResponses).toFixed(2)) : 0;
+    const positivePercentage = totalResponses > 0 ? Math.round((positiveCount / totalResponses) * 100) : 0;
+
+    return {
+      totalResponses,
+      ratingSum,
+      positiveCount,
+      averageRating,
+      positivePercentage,
+    };
   } catch {
     return null;
   }
 }
 
-export async function waitForCounterLedgerCount(
-  publicDataProvider: ReturnType<typeof createCounterPublicDataProvider>,
+export async function waitForFeedbackLedgerState(
+  publicDataProvider: ReturnType<typeof createFeedbackPublicDataProvider>,
   contractAddress: string,
-  targetCount?: bigint,
+  targetCount?: number,
   pollIntervalMs = 2000,
   maxAttempts = 60,
-): Promise<bigint> {
+): Promise<FeedbackLedgerData> {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const currentCount = await getCounterLedgerCount(publicDataProvider, contractAddress);
-    if (currentCount !== null && (targetCount === undefined || currentCount >= targetCount)) {
-      return currentCount;
+    const current = await getFeedbackLedgerState(publicDataProvider, contractAddress);
+    if (current !== null && (targetCount === undefined || current.totalResponses >= targetCount)) {
+      return current;
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
-  throw new Error(`Counter state was not indexed after ${Math.round((pollIntervalMs * maxAttempts) / 1000)}s.`);
+  throw new Error(`Feedback state was not indexed after ${Math.round((pollIntervalMs * maxAttempts) / 1000)}s.`);
 }
 
 export async function waitForTransactionIndexing(
-  publicDataProvider: ReturnType<typeof createCounterPublicDataProvider>,
+  publicDataProvider: ReturnType<typeof createFeedbackPublicDataProvider>,
   txId: string,
   pollIntervalMs = 2000,
   maxAttempts = 60,

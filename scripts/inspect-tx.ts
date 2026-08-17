@@ -2,7 +2,7 @@ import { MidnightWalletProvider } from '../src/wallet.js';
 import { getConfig } from '../src/config.js';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledHelloWorldContract, zkConfigPath } from '../contracts/index.js';
+import { CompiledFeedbackContract, zkConfigPath } from '../contracts/index.js';
 import { buildProviders } from '../src/providers.js';
 import { syncWallet } from '../src/wallet.js';
 import * as Rx from 'rxjs';
@@ -72,8 +72,8 @@ async function testDeploy() {
 
   try {
     await (deployContract as any)(providers, {
-      compiledContract: CompiledHelloWorldContract,
-      privateStateId: 'CounterPrivateState',
+      compiledContract: CompiledFeedbackContract,
+      privateStateId: 'FeedbackPrivateState',
       initialPrivateState: {},
       args: [],
     });

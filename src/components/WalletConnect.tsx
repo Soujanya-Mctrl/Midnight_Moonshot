@@ -1,5 +1,4 @@
-import React from 'react';
-import { Wallet, ShieldCheck, ChevronRight, LogOut, AlertTriangle, XCircle, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
 
 export const WalletConnect: React.FC = () => {
@@ -13,123 +12,94 @@ export const WalletConnect: React.FC = () => {
     availableWallets,
     connectWallet,
     disconnectWallet,
-    clearError,
   } = useMidnight();
 
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="tech-panel">
-      <div className="tech-panel-header">
-        <span className="panel-label">
-          <ShieldCheck size={14} />
-          WALLET_CONNECTION_STATUS
-        </span>
-        <span className="hud-status-badge">
-          <span className="status-dot" style={{ background: isConnected ? '#ffffff' : '#6b7280' }}></span>
-          {isConnected ? `${network} [CONNECTED]` : 'DISCONNECTED'}
+    <div className="wallet-card">
+      <div className="panel-header">
+        <span className="panel-title-tag">WALLET SESSION</span>
+        <span className={`panel-chip ${isConnected ? '' : 'disconnected'}`}>
+          {isConnected ? `${network} CONNECTED` : 'DISCONNECTED'}
         </span>
       </div>
 
       {/* Error Alert Message */}
       {error && (
-        <div
-          style={{
-            padding: '0.9rem 1.1rem',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.25)',
-            borderRadius: '10px',
-            color: '#ffffff',
-            fontSize: '0.8rem',
-            fontFamily: 'JetBrains Mono',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.25rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={16} style={{ color: '#ffffff' }} />
-            <span>{error}</span>
-          </div>
-          <XCircle size={16} style={{ cursor: 'pointer', minWidth: '16px', color: '#a3a3a3' }} onClick={clearError} />
+        <div className="error-banner" style={{ marginBottom: '1rem' }}>
+          {error}
         </div>
       )}
 
-      {/* Wallet Extension Missing Alert + Install Button */}
+      {/* Missing Wallet Extension */}
       {!isLaceInstalled && !isConnected && !error && (
-        <div
-          style={{
-            padding: '0.9rem 1.1rem',
-            background: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '10px',
-            color: '#e5e5e5',
-            fontSize: '0.78rem',
-            fontFamily: 'JetBrains Mono',
-            marginBottom: '1.25rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <AlertTriangle size={16} style={{ color: '#ffffff' }} />
-            <span style={{ fontWeight: 600 }}>No Midnight wallet extension detected.</span>
-          </div>
+        <div className="wallet-missing-banner">
+          <div className="missing-title">No Midnight Wallet Detected</div>
+          <p className="missing-text">
+            Install 1 AM Wallet or Lace (set to Preview Testnet) to interact with the contract.
+          </p>
           <a
             href="https://chromewebstore.google.com/detail/lace/gafhhkghbfjjbfnlhbdpkhbedigapahu"
             target="_blank"
             rel="noreferrer"
-            style={{
-              color: '#ffffff',
-              textDecoration: 'underline',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 700,
-            }}
+            className="btn-install-wallet"
           >
-            <ExternalLink size={14} />
-            Install Lace / 1 AM Wallet Extension
+            Get Extension
           </a>
         </div>
       )}
 
-      {/* Connected Address vs Disconnected Banner */}
-      <div className="address-block" style={{ color: isConnected ? '#ffffff' : '#94a3b8' }}>
-        {isConnected ? (
-          <div>
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px' }}>CONNECTED WALLET ADDRESS:</div>
-            {address}
-          </div>
-        ) : (
-          'DISCONNECTED // NO ACTIVE WALLET SESSION'
-        )}
+      {/* Connected Address Card */}
+      <div className="address-display-box">
+        <div className="address-box-header">
+          <span className="address-box-label">UNSHIELDED ACCOUNT</span>
+          {isConnected && address && (
+            <button type="button" className="btn-copy-mini" onClick={copyAddress}>
+              {copied ? 'COPIED' : 'COPY'}
+            </button>
+          )}
+        </div>
+        <div className="address-box-value">
+          {isConnected && address ? address : 'No active wallet session'}
+        </div>
       </div>
 
-      {/* Connect / Disconnect Action Buttons */}
-      <div className="hud-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+      {/* Action Buttons */}
+      <div className="wallet-action-buttons">
         {!isConnected ? (
           availableWallets.length > 1 ? (
             availableWallets.map((w) => (
               <button
                 key={w.id}
-                className="btn-tech primary"
+                type="button"
+                className="btn-connect-wallet"
                 onClick={() => connectWallet(w.id)}
                 disabled={isConnecting}
               >
-                <Wallet size={16} />
-                {isConnecting ? `CONNECTING TO ${w.name.toUpperCase()}...` : `CONNECT ${w.name.toUpperCase()}`}
-                <ChevronRight size={16} />
+                {isConnecting ? 'Connecting...' : `Connect ${w.name}`}
               </button>
             ))
           ) : (
-            <button className="btn-tech primary" onClick={() => connectWallet()} disabled={isConnecting}>
-              <Wallet size={16} />
-              {isConnecting ? 'CONNECTING TO WALLET...' : 'CONNECT LACE / 1 AM WALLET'}
-              <ChevronRight size={16} />
+            <button
+              type="button"
+              className="btn-connect-wallet"
+              onClick={() => connectWallet()}
+              disabled={isConnecting}
+            >
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
           )
         ) : (
-          <button className="btn-tech" onClick={disconnectWallet}>
-            <LogOut size={16} />
-            DISCONNECT WALLET
+          <button type="button" className="btn-disconnect" onClick={disconnectWallet}>
+            Disconnect Wallet
           </button>
         )}
       </div>

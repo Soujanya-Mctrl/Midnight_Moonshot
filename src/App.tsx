@@ -1,132 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { Database, Activity } from 'lucide-react';
-import { WalletConnect } from './components/WalletConnect';
-import { CircuitCall } from './components/CircuitCall';
-import { useMidnight } from './hooks/useMidnight';
+import React, { useState } from 'react';
+import { Header, type PageId } from './components/Header';
+import { FeedbackStudio } from './components/FeedbackStudio';
+import { MetricsDashboard } from './components/MetricsDashboard';
+import { PrivacyInspector } from './components/PrivacyInspector';
+import { LiveFeedStream, type FeedItem } from './components/LiveFeedStream';
 import './App.css';
 
-interface TxRecord {
-  hash: string;
-  circuit: string;
-  witness: string;
-  block: number | string;
-  dustFee: string;
-  status: string;
-  time: string;
-}
-
 export function App() {
-  const { isConnected, address, counterState } = useMidnight();
-  const [blockHeight, setBlockHeight] = useState<number | string>('Syncing...');
-  const [onChainTxs, setOnChainTxs] = useState<TxRecord[]>([]);
+  const [activePage, setActivePage] = useState<PageId>('submit');
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([
+    {
+      hash: '0d60f46fac2086100035ce13375095fb6fce3c85d665c5c500720ca630f18ba9',
+      rating: 5,
+      category: 'Developer Experience',
+      commentPreview: 'Compact circuit proving is fast and reliable.',
+      timestamp: '5 mins ago',
+    },
+    {
+      hash: '4a19b88e170020bc88e17a521a04f8dbd5244d63a59d8fbc2c9fc7ea521a04f8',
+      rating: 4,
+      category: 'Privacy & Security',
+      commentPreview: 'Verified zero-linkability — submitter address is hidden.',
+      timestamp: '12 mins ago',
+    },
+  ]);
 
-  const handleCircuitExecuted = (txHash: string, newCount: number) => {
-    const newHeight = typeof blockHeight === 'number' ? blockHeight + 1 : 'Pending...';
-    setBlockHeight(newHeight);
-
-    setOnChainTxs((prev) => [
-      {
-        hash: txHash,
-        circuit: 'incrementBy',
-        witness: 'Disclosed Witness',
-        block: newHeight,
-        dustFee: '0.15 DUST',
-        status: 'VERIFIED',
-        time: 'Just now',
-      },
-      ...prev,
-    ]);
+  const handleFeedbackSubmitted = (record: FeedItem) => {
+    setFeedItems((prev) => [record, ...prev]);
   };
 
   return (
-    <div className="hud-container">
-      {/* Top Scientific HUD Header */}
-      <header className="hud-navbar">
-        <div className="brand-block">
-          <div className="brand-tag">MIDNIGHT</div>
-          <div className="brand-info">
-            <div className="brand-name">ZK-SYSTEM CONTROL PANEL</div>
-            <div className="brand-meta">NETWORK PROTOCOL // COMPACT v0.23</div>
+    <div className="site-layout">
+      {/* Top Navbar */}
+      <Header activePage={activePage} setActivePage={setActivePage} />
+
+      {/* Centered Main Content */}
+      <main className="main-content-centered">
+        <div className="page-container">
+          {activePage === 'submit' && (
+            <div className="view-fade-in">
+              <FeedbackStudio onFeedbackSubmitted={handleFeedbackSubmitted} />
+            </div>
+          )}
+
+          {activePage === 'analytics' && (
+            <div className="view-fade-in">
+              <MetricsDashboard />
+            </div>
+          )}
+
+          {activePage === 'privacy' && (
+            <div className="view-fade-in">
+              <PrivacyInspector />
+            </div>
+          )}
+
+          {activePage === 'explorer' && (
+            <div className="view-fade-in">
+              <LiveFeedStream items={feedItems} />
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Clean Minimal Footer */}
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <span className="footer-copy">Midnight Whisper • Zero-Knowledge Anonymous Feedback Protocol</span>
+          <div className="footer-links">
+            <button type="button" onClick={() => setActivePage('submit')} className="footer-link">Feedback</button>
+            <button type="button" onClick={() => setActivePage('analytics')} className="footer-link">Analytics</button>
+            <button type="button" onClick={() => setActivePage('privacy')} className="footer-link">Privacy</button>
+            <button type="button" onClick={() => setActivePage('explorer')} className="footer-link">Activity</button>
           </div>
         </div>
-
-        <div className="hud-status-badge">
-          <span className="status-dot"></span>
-          PREVIEW [LIVE]
-        </div>
-      </header>
-
-      {/* Master Dashboard Layout */}
-      <div className="master-layout">
-        {/* Left Column: Circuit Controls & Asset Cards */}
-        <CircuitCall onCircuitExecuted={handleCircuitExecuted} />
-
-        {/* Right Column: Wallet Connection */}
-        <div className="right-column">
-          <WalletConnect />
-        </div>
-      </div>
-
-      {/* Bottom Section: On-Chain Transaction Explorer */}
-      <div className="explorer-panel">
-        <div className="tech-panel-header">
-          <span className="panel-label">
-            <Activity size={14} />
-            LIVE_ONCHAIN_LEDGER_TRANSACTIONS & ZK_PROOF_LOGS
-          </span>
-          <span className="panel-label">
-            <Database size={14} />
-            HEIGHT: #{blockHeight}
-          </span>
-        </div>
-
-        {onChainTxs.length === 0 ? (
-          <div
-            style={{
-              padding: '1.5rem',
-              textAlign: 'center',
-              color: '#94a3b8',
-              fontFamily: 'JetBrains Mono',
-              fontSize: '0.85rem',
-            }}
-          >
-            NO ON-CHAIN TRANSACTIONS SUBMITTED IN THIS SESSION. CONNECT A WALLET, DEPLOY THE CONTRACT, THEN CALL THE CIRCUIT ABOVE.
-          </div>
-        ) : (
-          <table className="explorer-table">
-            <thead>
-              <tr>
-                <th>TRANSACTION HASH</th>
-                <th>CIRCUIT / ACTION</th>
-                <th>WITNESS MODEL</th>
-                <th>BLOCK</th>
-                <th>FEE</th>
-                <th>PROOF STATUS</th>
-                <th>TIMESTAMP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {onChainTxs.map((tx, idx) => (
-                <tr key={idx}>
-                  <td className="tx-hash-code">
-                    {tx.hash.substring(0, 16)}...{tx.hash.substring(tx.hash.length - 8)}
-                  </td>
-                  <td className="tx-circuit-name">{tx.circuit}</td>
-                  <td>
-                    <span className="witness-badge">{tx.witness}</span>
-                  </td>
-                  <td className="mono-val">#{tx.block}</td>
-                  <td className="mono-val">{tx.dustFee}</td>
-                  <td>
-                    <span className="status-badge-ok">[VERIFIED_OK]</span>
-                  </td>
-                  <td className="mono-time">{tx.time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      </footer>
     </div>
   );
 }

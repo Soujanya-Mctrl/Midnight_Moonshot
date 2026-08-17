@@ -28,7 +28,7 @@ import pino from 'pino';
 import { getConfig } from '../src/config.js';
 import { MidnightWalletProvider, syncWallet, type WalletSecret } from '../src/wallet.js';
 import { buildProviders } from '../src/providers.js';
-import { CompiledCounterContract, zkCounterConfigPath } from '../contracts/counter-index.js';
+import { CompiledFeedbackContract, zkConfigPath } from '../contracts/index.js';
 
 // Required for Node.js WebSocket subscriptions
 // @ts-expect-error WebSocket global assignment
@@ -115,7 +115,7 @@ async function deployToPreview() {
     logger.info('✅ DUST coins now available!');
   }
 
-  const providers = buildProviders(wallet, zkCounterConfigPath, config);
+  const providers = buildProviders(wallet, zkConfigPath, config);
 
   const origSubmitTx = providers.midnightProvider.submitTx.bind(providers.midnightProvider);
   providers.midnightProvider.submitTx = async (tx: any) => {
@@ -123,7 +123,7 @@ async function deployToPreview() {
     if (addr) {
       console.log('\n=====================================');
       console.log(`📍 Contract Address: ${addr}`);
-      console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contract/${addr}`);
+      console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contracts/stream/${addr}`);
       console.log('=====================================\n');
     }
     try {
@@ -136,10 +136,10 @@ async function deployToPreview() {
     }
   };
 
-  logger.info('Submitting contract deployment to Midnight Preview Testnet...');
+  logger.info('Submitting feedback contract deployment to Midnight Preview Testnet...');
   const deployed: any = await (deployContract as any)(providers, {
-    compiledContract: CompiledCounterContract,
-    privateStateId: `CounterPrivateState_${Date.now()}`,
+    compiledContract: CompiledFeedbackContract,
+    privateStateId: `FeedbackPrivateState_${Date.now()}`,
     initialPrivateState: {},
     args: [],
   });
@@ -149,7 +149,7 @@ async function deployToPreview() {
   console.log('\n=====================================');
   console.log('✅ DEPLOYMENT SUCCESSFUL!');
   console.log(`📍 Contract Address: ${contractAddress}`);
-  console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contract/${contractAddress}`);
+  console.log(`🌐 Preview Explorer: https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`);
   console.log('=====================================\n');
 
   await wallet.stop();

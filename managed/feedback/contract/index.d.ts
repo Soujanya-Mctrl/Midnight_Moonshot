@@ -1,33 +1,30 @@
 import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 
-export type Witnesses<PS> = {
-}
+export type Witnesses<PS> = {};
 
 export type ImpureCircuits<PS> = {
-  incrementBy(context: __compactRuntime.CircuitContext<PS>,
-              secretIncrement_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-}
+  submitFeedback(context: __compactRuntime.CircuitContext<PS>, rating: bigint): __compactRuntime.CircuitResults<PS, []>;
+};
 
 export type ProvableCircuits<PS> = {
-  incrementBy(context: __compactRuntime.CircuitContext<PS>,
-              secretIncrement_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-}
+  submitFeedback(context: __compactRuntime.CircuitContext<PS>, rating: bigint): __compactRuntime.CircuitResults<PS, []>;
+};
 
-export type PureCircuits = {
-}
+export type PureCircuits = {};
 
 export type Circuits<PS> = {
-  incrementBy(context: __compactRuntime.CircuitContext<PS>,
-              secretIncrement_0: bigint): __compactRuntime.CircuitResults<PS, []>;
-}
+  submitFeedback(context: __compactRuntime.CircuitContext<PS>, rating: bigint): __compactRuntime.CircuitResults<PS, []>;
+};
 
 export type Ledger = {
-  readonly count: bigint;
-}
+  readonly totalResponses: bigint;
+  readonly ratingSum: bigint;
+  readonly positiveCount: bigint;
+};
 
 export type ContractReferenceLocations = any;
 
-export declare const contractReferenceLocations : ContractReferenceLocations;
+export declare const contractReferenceLocations: ContractReferenceLocations;
 
 export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;

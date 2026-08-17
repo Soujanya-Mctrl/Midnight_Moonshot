@@ -25,7 +25,7 @@ import pino from 'pino';
 import { getConfig } from '../src/config.js';
 import { MidnightWalletProvider } from '../src/wallet.js';
 import { buildProviders } from '../src/providers.js';
-import { CompiledHelloWorldContract, zkConfigPath } from '../contracts/index.js';
+import { CompiledFeedbackContract, zkConfigPath } from '../contracts/index.js';
 
 // @ts-expect-error WebSocket global assignment
 globalThis.WebSocket = WebSocket;
@@ -34,7 +34,7 @@ async function checkDeployedAddress() {
   const logger = pino({ level: 'info' });
   const network = 'preview';
   setNetworkId(network);
-  const config = getConfig(network);
+  const config = getConfig();
 
   const mnemonic = process.env.MIDNIGHT_PREVIEW_MNEMONIC || '';
   const envConfig: any = {
@@ -62,8 +62,8 @@ async function checkDeployedAddress() {
   try {
     console.log('Building deployment payload...');
     const deployed: any = await (deployContract as any)(providers, {
-      compiledContract: CompiledHelloWorldContract,
-      privateStateId: 'CounterPrivateState',
+      compiledContract: CompiledFeedbackContract,
+      privateStateId: 'FeedbackPrivateState',
       initialPrivateState: {},
       args: [],
     });
