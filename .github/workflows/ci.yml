@@ -21,15 +21,23 @@ jobs:
 
       - name: 3. Install Compact Compiler
         run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          curl --proto '=https' --tlsv1.2 -sSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          if [ -f "$HOME/.local/bin/env" ]; then
+            source "$HOME/.local/bin/env"
+          fi
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.compact/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.local/bin:$HOME/.compact/bin:$PATH"
+          compact --version || true
 
       - name: 4. Install dependencies
         run: npm install
 
       - name: 5. Compile Compact Contract
         run: |
+          if [ -f "$HOME/.local/bin/env" ]; then
+            source "$HOME/.local/bin/env"
+          fi
           export PATH="$HOME/.local/bin:$HOME/.compact/bin:$PATH"
           compact compile contracts/feedback.compact managed/feedback
 
