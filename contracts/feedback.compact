@@ -1,4 +1,4 @@
-pragma language_version >= 0.23;
+pragma language_version >= 0.16.0;
 import CompactStandardLibrary;
 
 export ledger totalResponses: Uint<32>;
