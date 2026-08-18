@@ -15,6 +15,15 @@ export default defineConfig({
       'Expires': '0',
     },
   },
+  resolve: {
+    dedupe: [
+      '@midnight-ntwrk/ledger-v8',
+      '@midnight-ntwrk/compact-runtime',
+      '@midnight-ntwrk/midnight-js-protocol',
+      '@midnight-ntwrk/midnight-js-types',
+      '@midnight-ntwrk/wallet-sdk',
+    ],
+  },
   build: {
     target: 'esnext',
   },

@@ -64,6 +64,11 @@
     "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.1.0"
   },
+  "overrides": {
+    "@midnight-ntwrk/wallet-sdk": "$@midnight-ntwrk/wallet-sdk",
+    "@midnight-ntwrk/ledger-v8": "$@midnight-ntwrk/ledger-v8",
+    "@midnight-ntwrk/compact-runtime": "$@midnight-ntwrk/compact-runtime"
+  },
   "resolutions": {
     "@midnight-ntwrk/wallet-sdk": "1.2.0",
     "@midnight-ntwrk/ledger-v8": "8.1.1",

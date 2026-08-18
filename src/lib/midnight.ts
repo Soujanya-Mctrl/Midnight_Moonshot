@@ -7,9 +7,9 @@ if (typeof globalThis !== 'undefined' && !(globalThis as any).Buffer) {
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { MidnightProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types'; // 2024-05-22T12:00:00Z
+import { createProofProvider, type MidnightProvider, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import { CostModel, LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { createUnprovenDeployTx, submitCallTxAsync, submitTxAsync } from '@midnight-ntwrk/midnight-js-contracts';
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
@@ -341,9 +341,9 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
   const provingProvider = await api.getProvingProvider(zkConfigProvider);
 
   const proofProvider = {
-    async proveTx(unprovenTx: any, _config: any) {
-      const { CostModel } = await import('@midnight-ntwrk/ledger-v8');
-      return unprovenTx.prove(provingProvider, CostModel.initialCostModel());
+    async proveTx(unprovenTx: any, proofConfig?: any) {
+      const costModel = proofConfig?.costModel ?? CostModel.initialCostModel();
+      return unprovenTx.prove(provingProvider, costModel);
     },
   };
 
