@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
 import type { Campaign } from './CampaignSelector';
 import type { FeedItem } from './LiveFeedStream';
+import {
+  ShieldIcon,
+  CheckIcon,
+  CopyIcon,
+  CloseIcon,
+  AlertCircleIcon,
+  RefreshIcon,
+  ExternalLinkIcon,
+  ShareIcon,
+  ArrowLeftIcon,
+  CpuIcon,
+} from './Icons';
 
 const CATEGORIES = [
-  { id: 'any', label: 'Any Category' },
+  { id: 'any', label: 'Any Topic' },
   { id: 'dx', label: 'Developer Experience' },
   { id: 'privacy', label: 'Privacy & Cryptography' },
   { id: 'ui', label: 'Interface & Usability' },
-  { id: 'network', label: 'Network & Indexer' },
-  { id: 'defi', label: 'DeFi & Payments' },
+  { id: 'network', label: 'Network & Performance' },
   { id: 'general', label: 'General Ecosystem' },
   { id: 'custom', label: '+ Custom Topic...' },
 ];
@@ -51,7 +62,6 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
     feedbackState,
     isLoadingState,
     tnightBalance,
-    dustBalance,
     fetchLiveContractState,
   } = useMidnight();
 
@@ -65,6 +75,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
   const [copiedBadgeMd, setCopiedBadgeMd] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showPrivacySpecs, setShowPrivacySpecs] = useState(false);
 
   const generateUniqueId = () =>
     Array.from(crypto.getRandomValues(new Uint8Array(4)))
@@ -81,7 +92,12 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   const activeCategoryLabel =
     selectedCategory === 'custom'
       ? customCategoryName.trim() || 'Custom Topic'
-      : CATEGORIES.find((c) => c.id === selectedCategory)?.label || 'Any Category';
+      : CATEGORIES.find((c) => c.id === selectedCategory)?.label || 'Any Topic';
+
+  // Format system target tag cleanly
+  const formattedTargetTag = campaign.category
+    .replace(/^TARGET\s*\/\/\s*/i, 'TARGET: ')
+    .replace(/^TARGET\s*:\s*/i, 'TARGET: ');
 
   // On-chain metrics
   const total = feedbackState?.totalResponses ?? 0;
@@ -149,337 +165,372 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   };
 
   return (
-    <div className="campaign-dashboard">
-      {/* Campaign Header Bar */}
+    <div className="protocol-view-wrapper">
+      {/* Unified Compact Campaign Header */}
       <div className="campaign-header-bar">
-        <button type="button" className="btn-back-campaigns" onClick={onBack}>
-          ← ALL CAMPAIGNS
-        </button>
-        <div className="campaign-header-info">
-          <span className="campaign-header-emoji">{campaign.emoji}</span>
-          <div>
+        <div className="campaign-header-left">
+          <button type="button" className="btn-back-campaigns" onClick={onBack}>
+            <ArrowLeftIcon size={13} />
+            <span>CAMPAIGNS</span>
+          </button>
+          <div className="campaign-title-group">
             <h2 className="campaign-header-name">{campaign.name}</h2>
-            <span className="campaign-header-desc">{campaign.description}</span>
+            <span className="directory-tag campaign-system-label">{formattedTargetTag}</span>
           </div>
         </div>
-        <button
-          type="button"
-          className="btn-ask-feedback"
-          onClick={openShareModal}
-        >
-          📋 SHARE FEEDBACK LINK
+
+        <button type="button" className="btn-ask-feedback" onClick={openShareModal}>
+          <ShareIcon size={13} />
+          <span>SHARE FEEDBACK LINK</span>
+          <ExternalLinkIcon size={11} />
         </button>
       </div>
 
-      {/* Share Modal */}
+      {/* Sub-header context note */}
+      <div className="campaign-subtitle-bar">
+        <span className="subtitle-text">
+          Zero-knowledge feedback protocol. Ratings are verified off-chain; submitter identity remains 100% private.
+        </span>
+      </div>
+
+      {/* Share Link Modal */}
       {showShareModal && (
         <div className="modal-backdrop" onClick={() => setShowShareModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">SHARE FEEDBACK CAMPAIGN</span>
-              <button type="button" className="btn-modal-close" onClick={() => setShowShareModal(false)}>✕</button>
+              <span className="modal-title">SHARE FEEDBACK LINK</span>
+              <button type="button" className="btn-modal-close" onClick={() => setShowShareModal(false)}>
+                <CloseIcon size={14} />
+              </button>
             </div>
             <p className="modal-description">
-              Share this dedicated link with your users or DAO members. Their feedback will be submitted with client-side Zero-Knowledge proofs with zero gas fees.
+              Send this link to your users to collect zero-knowledge feedback (0 gas cost for submitters).
             </p>
-
-            <div className="input-block">
-              <label className="input-label">CAMPAIGN TARGET</label>
-              <input type="text" readOnly className="share-url-input" value={campaign.name} />
-            </div>
 
             <div className="input-block">
               <label className="input-label">SHAREABLE FEEDBACK URL</label>
               <div className="share-url-row">
                 <input type="text" readOnly className="share-url-input" value={generateShareUrl()} />
                 <button type="button" className="btn-copy-url" onClick={copyShareLink}>
-                  {copiedShareUrl ? 'COPIED ✓' : 'COPY'}
+                  {copiedShareUrl ? (
+                    <>
+                      <CheckIcon size={12} />
+                      <span>COPIED</span>
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon size={12} />
+                      <span>COPY LINK</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="input-block">
-              <label className="input-label">README / GITHUB BADGE</label>
+              <label className="input-label">README MARKDOWN BADGE</label>
               <div className="share-url-row">
                 <input type="text" readOnly className="share-url-input" value={getBadgeMarkdown()} />
                 <button type="button" className="btn-copy-url" onClick={copyBadgeMarkdown}>
-                  {copiedBadgeMd ? 'COPIED ✓' : 'COPY MARKDOWN'}
+                  {copiedBadgeMd ? (
+                    <>
+                      <CheckIcon size={12} />
+                      <span>COPIED</span>
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon size={12} />
+                      <span>COPY BADGE</span>
+                    </>
+                  )}
                 </button>
               </div>
-            </div>
-
-            <div className="modal-privacy-note">
-              🛡️ <strong>Zero-Knowledge Guarantee</strong>: Respondents pay 0 gas fees (sponsored by ProofStation) and their identities remain 100% confidential.
             </div>
           </div>
         </div>
       )}
 
-      {/* ═══════════ SECTION 1: ANALYTICS TELEMETRY ═══════════ */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">📊 CAMPAIGN ANALYTICS</span>
-          <button
-            type="button"
-            className={`btn-refresh-metrics ${isRefreshing || isLoadingState ? 'refreshing' : ''}`}
-            onClick={handleRefresh}
-            disabled={isRefreshing || isLoadingState}
-            title="Fetch latest state from Midnight Indexer"
-          >
-            <span className="refresh-icon">↻</span>
-            <span>{isRefreshing || isLoadingState ? 'SYNCING...' : 'REFRESH'}</span>
-          </button>
-        </div>
+      {/* Main 2-Column Interface */}
+      <div className="spatial-grid" style={{ marginTop: '1.25rem' }}>
+        {/* Left Column: Form Panel */}
+        <div className="form-panel">
+          <div className="panel-bar">
+            <span className="panel-bar-title">FEEDBACK SUBMISSION</span>
+            <span className="panel-bar-meta">0 GAS FEES</span>
+          </div>
 
-        <div className="telemetry-grid compact">
-          <div className="telemetry-card">
-            <div className="card-top-tag">TOTAL RESPONSES</div>
-            <div className="telemetry-giant-num">
-              {isLoadingState ? <span className="skeleton-pulse">...</span> : total}
-            </div>
-          </div>
-          <div className="telemetry-card">
-            <div className="card-top-tag">AVG RATING</div>
-            <div className="telemetry-giant-num">
-              {isLoadingState ? <span className="skeleton-pulse">...</span> : `${avg.toFixed(1)} ★`}
-            </div>
-          </div>
-          <div className="telemetry-card">
-            <div className="card-top-tag">POSITIVE</div>
-            <div className="telemetry-giant-num">
-              {isLoadingState ? <span className="skeleton-pulse">...</span> : `${positiveRate}%`}
-            </div>
-          </div>
-          <div className="telemetry-card">
-            <div className="card-top-tag">WALLET BALANCE</div>
-            <div className="wallet-balance-stats">
-              <div className="b-stat">
-                <span className="b-label">tNIGHT</span>
-                <span className="b-val">{isConnected ? `${tnightBalance}` : '—'}</span>
+          <form onSubmit={handleSubmit} className="protocol-form">
+            {/* Topic Selection */}
+            <div className="input-block">
+              <label className="input-label">SELECT TOPIC</label>
+              <div className="segmented-grid">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    className={`segment-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
               </div>
-              <div className="b-stat">
-                <span className="b-label">DUST</span>
-                <span className="b-val">{isConnected ? `${dustBalance}` : '—'}</span>
+              {selectedCategory === 'custom' && (
+                <div style={{ marginTop: '8px' }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Custom topic..."
+                    className="protocol-input"
+                    value={customCategoryName}
+                    onChange={(e) => setCustomCategoryName(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Satisfaction Rating */}
+            <div className="input-block">
+              <div className="input-label-split">
+                <label className="input-label">SATISFACTION RATING</label>
+                <span className="score-desc">{rating} / 5 • {RATING_LABELS[rating]}</span>
+              </div>
+              <div className="rating-grid">
+                {[1, 2, 3, 4, 5].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    className={`rating-block-btn ${rating === val ? 'active' : ''}`}
+                    onClick={() => setRating(val)}
+                  >
+                    <span className="rating-num">{val}</span>
+                    <span className="rating-star">★</span>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ═══════════ SECTION 2: FEEDBACK FORM ═══════════ */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">✍️ SUBMIT FEEDBACK</span>
-          <span className="dashboard-section-meta">CIRCUIT: submitFeedback</span>
-        </div>
+            {/* Private Memo */}
+            <div className="input-block">
+              <div className="input-label-split">
+                <label className="input-label">PRIVATE NOTE (OPTIONAL)</label>
+                <span className="char-count-meta">{comment.length} / 280</span>
+              </div>
+              <textarea
+                className="protocol-textarea"
+                rows={3}
+                maxLength={280}
+                placeholder="Share your detailed feedback (processed strictly in local browser memory)..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+            </div>
 
-        <form onSubmit={handleSubmit} className="protocol-form dashboard-form">
-          {/* Category */}
-          <div className="input-block">
-            <label className="input-label">FEEDBACK TOPIC / CATEGORY</label>
-            <select
-              className="protocol-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
-              ))}
-            </select>
-            {selectedCategory === 'custom' && (
-              <div style={{ marginTop: '6px' }}>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter your custom topic..."
-                  className="protocol-input"
-                  value={customCategoryName}
-                  onChange={(e) => setCustomCategoryName(e.target.value)}
-                />
+            {/* Error Alert */}
+            {error && (
+              <div className="protocol-alert-error">
+                <div className="alert-content">
+                  <AlertCircleIcon size={15} color="#ef4444" />
+                  <span className="alert-text">{error}</span>
+                </div>
+                <button type="button" className="btn-dismiss-error" onClick={clearError} title="Dismiss">
+                  <CloseIcon size={13} />
+                </button>
               </div>
             )}
-          </div>
 
-          {/* Rating */}
-          <div className="input-block">
-            <div className="input-label-split">
-              <label className="input-label">SATISFACTION RATING</label>
-              <span className="score-desc">{rating} / 5 • {RATING_LABELS[rating]}</span>
-            </div>
-            <div className="rating-grid">
-              {[1, 2, 3, 4, 5].map((val) => (
-                <button
-                  key={val}
-                  type="button"
-                  className={`rating-block-btn ${rating === val ? 'active' : ''}`}
-                  onClick={() => setRating(val)}
-                >
-                  <span className="rating-num">{val}</span>
-                  <span className="rating-star">★</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Comment */}
-          <div className="input-block">
-            <div className="input-label-split">
-              <label className="input-label">CONFIDENTIAL MEMO</label>
-              <span className="char-count-meta">{comment.length} / 280</span>
-            </div>
-            <textarea
-              className="protocol-textarea"
-              rows={3}
-              maxLength={280}
-              placeholder={`Share your feedback for ${campaign.name} (processed locally as a private witness)...`}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="protocol-alert-error">
-              <div className="alert-content">
-                <span className="alert-icon">⚠️</span>
-                <span className="alert-text">{error}</span>
-              </div>
-              <button type="button" className="btn-dismiss-error" onClick={clearError} title="Dismiss">✕</button>
-            </div>
-          )}
-
-          {/* ZK Progress */}
-          {isCallingCircuit && (
-            <div className="protocol-alert-proving-card">
-              <div className="proving-spinner-row">
-                <div className="proving-spinner" />
-                <div className="proving-header">
-                  <span className="proving-title">SYNTHESIZING COMPACT ZERO-KNOWLEDGE PROOF</span>
-                  <span className="proving-subtitle">{provingStep || 'Computing proof in client runtime...'}</span>
+            {/* ZK Proving Progress */}
+            {isCallingCircuit && (
+              <div className="protocol-alert-proving-card">
+                <div className="proving-spinner-row">
+                  <div className="proving-spinner" />
+                  <div className="proving-header">
+                    <span className="proving-title">GENERATING ZERO-KNOWLEDGE PROOF</span>
+                    <span className="proving-subtitle">{provingStep || 'Computing proof...'}</span>
+                  </div>
+                </div>
+                <div className="proving-progress-bar">
+                  <div className="proving-progress-fill" />
                 </div>
               </div>
-              <div className="proving-progress-bar">
-                <div className="proving-progress-fill" />
+            )}
+
+            {/* Form Actions */}
+            <div className="form-actions-row">
+              {isConnected ? (
+                <button
+                  type="submit"
+                  className="btn-protocol-primary"
+                  disabled={isCallingCircuit}
+                >
+                  {isCallingCircuit ? 'GENERATING PROOF...' : 'SUBMIT ANONYMOUS FEEDBACK'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-protocol-primary"
+                  onClick={() => connectWallet()}
+                >
+                  CONNECT WALLET TO SUBMIT
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Confirmed Tx Banner */}
+          {lastTxHash && (
+            <div className="tx-verified-card">
+              <div className="tx-verified-header">
+                <span className="verified-glyph">
+                  <CheckIcon size={14} color="#34d399" />
+                </span>
+                <span className="verified-title">FEEDBACK SUBMITTED ON-CHAIN</span>
               </div>
-              <div className="proving-gas-badge">
-                <span>⚡ 100% Sponsored Gas (Cost: 0.00 NIGHT / 0 DUST)</span>
+              <div className="tx-hash-row">
+                <span className="tx-hash-val">{lastTxHash}</span>
+                <button type="button" className="btn-copy-hash" onClick={copyHash}>
+                  {copiedHash ? (
+                    <>
+                      <CheckIcon size={12} />
+                      <span>COPIED</span>
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon size={12} />
+                      <span>COPY</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Submit Button */}
-          <div className="form-actions-row">
-            {isConnected ? (
-              <button
-                type="submit"
-                className="btn-protocol-primary"
-                disabled={isCallingCircuit}
-              >
-                {isCallingCircuit ? 'GENERATING ZK PROOF...' : `SUBMIT PROOF FOR ${campaign.name.toUpperCase()}`}
-              </button>
-            ) : (
+        {/* Right Column: Unified Results Panel */}
+        <div className="protocol-sidebar">
+          {/* Main Results Container Card */}
+          <div className="sidebar-card">
+            <div className="sidebar-card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldIcon size={14} color="var(--text-white)" />
+                <span className="sidebar-title">LIVE CAMPAIGN RESULTS</span>
+              </div>
               <button
                 type="button"
-                className="btn-protocol-primary"
-                onClick={() => connectWallet()}
+                className={`btn-refresh-metrics ${isRefreshing || isLoadingState ? 'refreshing' : ''}`}
+                onClick={handleRefresh}
+                disabled={isRefreshing || isLoadingState}
+                title="Refresh state"
               >
-                CONNECT WALLET TO SUBMIT
-              </button>
-            )}
-            <a
-              href="https://midnight-tmnight-preview.nethermind.dev"
-              target="_blank"
-              rel="noreferrer"
-              className="btn-protocol-secondary"
-            >
-              TESTNET FAUCET ↗
-            </a>
-          </div>
-        </form>
-
-        {/* Confirmed Tx Banner */}
-        {lastTxHash && (
-          <div className="tx-verified-card">
-            <div className="tx-verified-header">
-              <span className="verified-glyph">✓</span>
-              <span className="verified-title">PROOF VERIFIED & ON-CHAIN COMMITTED</span>
-            </div>
-            <div className="tx-hash-row">
-              <span className="tx-hash-val">{lastTxHash}</span>
-              <button type="button" className="btn-copy-hash" onClick={copyHash}>
-                {copiedHash ? 'COPIED ✓' : 'COPY'}
+                <RefreshIcon size={12} className={isRefreshing || isLoadingState ? 'spin-icon' : ''} />
+                <span>{isRefreshing || isLoadingState ? 'SYNCING...' : 'REFRESH'}</span>
               </button>
             </div>
-            {contractAddress && (
-              <a
-                href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
-                target="_blank"
-                rel="noreferrer"
-                className="tx-explorer-link"
+
+            <div className="witness-table">
+              <div className="witness-row">
+                <span className="w-key">TOTAL RESPONSES</span>
+                <span className="w-val w-active">{isLoadingState ? '...' : total}</span>
+              </div>
+              <div className="witness-row">
+                <span className="w-key">AVERAGE RATING</span>
+                <span className="w-val w-active">{isLoadingState ? '...' : `${avg.toFixed(1)} ★`}</span>
+              </div>
+              <div className="witness-row">
+                <span className="w-key">POSITIVE SENTIMENT</span>
+                <span className="w-val w-public">{isLoadingState ? '...' : `${positiveRate}% (${positiveCount}/${total})`}</span>
+              </div>
+              <div className="witness-row">
+                <span className="w-key">NETWORK</span>
+                <span className="w-val">{network.toUpperCase()}</span>
+              </div>
+              {isConnected && (
+                <div className="witness-row">
+                  <span className="w-key">YOUR BALANCE</span>
+                  <span className="w-val">{tnightBalance} tNIGHT</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Share Link Section */}
+            <div className="sidebar-sub-section">
+              <span className="sidebar-sub-title">SHAREABLE LINK</span>
+              <div className="share-url-row">
+                <input type="text" readOnly className="share-url-input" value={generateShareUrl()} />
+                <button type="button" className="btn-copy-url" onClick={copyShareLink}>
+                  {copiedShareUrl ? 'COPIED' : 'COPY'}
+                </button>
+              </div>
+            </div>
+
+            {/* Collapsible Privacy Specs Section */}
+            <div className="sidebar-sub-section">
+              <div
+                className="sidebar-accordion-header"
+                onClick={() => setShowPrivacySpecs((prev) => !prev)}
               >
-                Inspect State Transition on Midnight Explorer →
-              </a>
-            )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <CpuIcon size={13} color="var(--text-muted)" />
+                  <span className="sidebar-sub-title" style={{ margin: 0 }}>PROTOCOL PRIVACY SPECS</span>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                  {showPrivacySpecs ? '▲ HIDE' : '▼ SHOW'}
+                </span>
+              </div>
+
+              {showPrivacySpecs && (
+                <div className="witness-table view-fade-in" style={{ marginTop: '0.6rem' }}>
+                  <div className="witness-row">
+                    <span className="w-key">PROOF ENGINE</span>
+                    <span className="w-val">COMPACT ZK-SNARK</span>
+                  </div>
+                  <div className="witness-row">
+                    <span className="w-key">SUBMITTER WALLET</span>
+                    <span className="w-val w-private">UNLINKED & PRIVATE</span>
+                  </div>
+                  <div className="witness-row">
+                    <span className="w-key">DISCLOSURE</span>
+                    <span className="w-val w-public">AGGREGATE TALLY</span>
+                  </div>
+                  {contractAddress && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <a
+                        href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="tx-explorer-link"
+                      >
+                        <span>Contract on Explorer</span>
+                        <ExternalLinkIcon size={10} />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ═══════════ SECTION 3: PRIVACY BOUNDARY ═══════════ */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">🔐 PRIVACY BOUNDARY</span>
-        </div>
-
-        <div className="telemetry-privacy-breakdown">
-          <div className="breakdown-card public-side">
-            <div className="breakdown-tag">🌐 PUBLIC ON-CHAIN LEDGER</div>
-            <ul className="breakdown-list">
-              <li>✓ Total Verified Submissions: <strong>{total}</strong></li>
-              <li>✓ Rating Accumulator: <strong>{feedbackState?.ratingSum ?? 0}</strong></li>
-              <li>✓ Positive Ratings Count: <strong>{positiveCount}</strong></li>
-            </ul>
-          </div>
-          <div className="breakdown-card private-side">
-            <div className="breakdown-tag">🔒 PRIVATE ZERO-KNOWLEDGE WITNESS</div>
-            <ul className="breakdown-list">
-              <li>🔒 Submitter Wallet Address: <strong>Unlinked & Hidden</strong></li>
-              <li>🔒 Confidential Feedback Notes: <strong>Local Memory Only</strong></li>
-              <li>🔒 Individual Star Scores: <strong>Evaluated Inside ZK-SNARK</strong></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══════════ SECTION 4: SESSION ACTIVITY ═══════════ */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">📜 SESSION ACTIVITY</span>
-          {campaignFeed.length > 0 && (
+      {/* Activity Log */}
+      {campaignFeed.length > 0 && (
+        <div className="dashboard-section" style={{ marginTop: '2rem' }}>
+          <div className="dashboard-section-header">
+            <span className="dashboard-section-title">RECENT PROOFS LOG</span>
             <button
               type="button"
               className="btn-clear-activity"
               onClick={onClearActivity}
-              title="Clear stored session entries"
             >
-              CLEAR LOG ✕
+              CLEAR LOG
             </button>
-          )}
-        </div>
-
-        {campaignFeed.length === 0 ? (
-          <div className="empty-protocol-state compact">
-            <div className="empty-glyph">🛡️</div>
-            <div className="empty-title">NO SUBMISSIONS YET</div>
-            <p className="empty-sub">
-              Submit your first ZK feedback proof above — it will appear here.
-            </p>
           </div>
-        ) : (
+
           <div className="activity-table">
             <div className="table-header-row">
               <span className="col-score">SCORE</span>
-              <span className="col-memo">CONFIDENTIAL MEMO</span>
-              <span className="col-cat">CATEGORY</span>
+              <span className="col-memo">NOTE</span>
+              <span className="col-cat">TOPIC</span>
               <span className="col-tx">PROOF HASH</span>
               <span className="col-action">EXPLORER</span>
             </div>
@@ -501,76 +552,16 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
                       rel="noreferrer"
                       className="row-action-link"
                     >
-                      INSPECT ↗
+                      <span>INSPECT</span>
+                      <ExternalLinkIcon size={11} />
                     </a>
                   )}
                 </span>
               </div>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* ═══════════ SECTION 5: HOW IT WORKS ═══════════ */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">⚙️ HOW IT WORKS</span>
         </div>
-
-        <div className="architecture-grid compact">
-          <div className="arch-card">
-            <div className="arch-step">01 / WITNESS GENERATION</div>
-            <h3 className="arch-heading">Client-Side Memory</h3>
-            <p className="arch-body">
-              Your rating and optional comment are held strictly inside your local browser memory as a private witness. The submitter's wallet address is never bound to the proof statement.
-            </p>
-            <div className="arch-data-tags">
-              <span className="tag-hidden">SUBMITTER ADDRESS: UNLINKED</span>
-              <span className="tag-hidden">RAW COMMENTS: LOCAL WITNESS ONLY</span>
-            </div>
-          </div>
-
-          <div className="arch-card">
-            <div className="arch-step">02 / COMPACT CIRCUIT EXECUTION</div>
-            <h3 className="arch-heading">Zero-Knowledge Assertion</h3>
-            <p className="arch-body">
-              The Compact smart contract verifies that the score satisfies mathematical constraints (1 ≤ rating ≤ 5) and generates a proof verifying the tally transition.
-            </p>
-            <div className="arch-code-box">
-              <code>assert rating &gt;= 1 &amp;&amp; rating &lt;= 5;</code>
-              <code>ratingSum += disclose(rating);</code>
-              <code>totalResponses += 1;</code>
-            </div>
-          </div>
-
-          <div className="arch-card">
-            <div className="arch-step">03 / ON-CHAIN SETTLEMENT</div>
-            <h3 className="arch-heading">Public Ledger State</h3>
-            <p className="arch-body">
-              The Midnight blockchain ledger updates only public aggregate counters. Observers and auditors can mathematically verify the result without ever knowing individual contributors.
-            </p>
-            <div className="arch-data-tags">
-              <span className="tag-public">TOTAL RESPONSES: PUBLIC ON-CHAIN</span>
-              <span className="tag-public">AVERAGE TALLY: PUBLIC ON-CHAIN</span>
-            </div>
-          </div>
-        </div>
-
-        {contractAddress && (
-          <div className="contract-address-bar">
-            <span className="c-label">DEPLOYED CONTRACT:</span>
-            <code className="c-addr">{contractAddress}</code>
-            <a
-              href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
-              target="_blank"
-              rel="noreferrer"
-              className="c-link"
-            >
-              VIEW STREAM ↗
-            </a>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };

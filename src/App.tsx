@@ -7,15 +7,6 @@ import './App.css';
 
 const ACTIVITY_STORAGE_KEY = 'midnight_whisper_activity_log';
 
-// Preset campaign lookup for URL deep-linking
-const PRESET_CAMPAIGN_MAP: Record<string, Campaign> = {
-  '1am-wallet': { id: '1am-wallet', name: '1AM Midnight Wallet', description: 'Browser extension wallet for Midnight Network transactions and ZK proving.', emoji: '🌙' },
-  'compact-dx': { id: 'compact-dx', name: 'Compact Language Toolchain', description: 'Smart contract language, compiler, and developer tooling for ZK circuits.', emoji: '⚡' },
-  'proofstation': { id: 'proofstation', name: 'ProofStation Prover API', description: 'Cloud-hosted ZK proof generation service for dust-free transactions.', emoji: '🔐' },
-  'midnight-indexer': { id: 'midnight-indexer', name: 'Midnight Indexer v4', description: 'GraphQL API for querying on-chain state, blocks, and contract actions.', emoji: '📡' },
-  'midnight-explorer': { id: 'midnight-explorer', name: 'Midnight Block Explorer', description: 'Web interface for inspecting transactions, contracts, and network health.', emoji: '🔍' },
-};
-
 export function App() {
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [feedItems, setFeedItems] = useState<FeedItem[]>(() => {
@@ -40,36 +31,34 @@ export function App() {
       const projectParam = params.get('project');
 
       if (projectParam) {
-        const presetKey = projectParam.toLowerCase();
-        if (PRESET_CAMPAIGN_MAP[presetKey]) {
-          setActiveCampaign(PRESET_CAMPAIGN_MAP[presetKey]);
-        } else {
-          // Try custom campaigns from localStorage
-          try {
-            const saved = window.localStorage.getItem('midnight_custom_campaigns');
-            const customs: Campaign[] = saved ? JSON.parse(saved) : [];
-            const found = customs.find((c) => c.id === presetKey);
-            if (found) {
-              setActiveCampaign(found);
-            } else {
-              // Create a campaign from the URL param
-              setActiveCampaign({
-                id: presetKey,
-                name: decodeURIComponent(projectParam),
-                description: 'Campaign from shared feedback link',
-                emoji: '🎯',
-                isCustom: true,
-              });
-            }
-          } catch {
+        const key = projectParam.toLowerCase();
+        // Try user-created campaigns from localStorage
+        try {
+          const saved = window.localStorage.getItem('midnight_custom_campaigns');
+          const customs: Campaign[] = saved ? JSON.parse(saved) : [];
+          const found = customs.find((c) => c.id === key);
+          if (found) {
+            setActiveCampaign(found);
+          } else {
+            // Dynamic campaign reconstructed from URL parameter
             setActiveCampaign({
-              id: presetKey,
+              id: key,
               name: decodeURIComponent(projectParam),
-              description: 'Campaign from shared feedback link',
-              emoji: '🎯',
+              category: 'TARGET // FEEDBACK',
+              description: 'Zero-knowledge feedback campaign from shared verification link.',
+              indexCode: '01',
               isCustom: true,
             });
           }
+        } catch {
+          setActiveCampaign({
+            id: key,
+            name: decodeURIComponent(projectParam),
+            category: 'TARGET // FEEDBACK',
+            description: 'Zero-knowledge feedback campaign from shared verification link.',
+            indexCode: '01',
+            isCustom: true,
+          });
         }
       }
     }
@@ -117,10 +106,20 @@ export function App() {
     }
   };
 
+  const scrollToHowItWorks = () => {
+    const el = document.getElementById('how-it-works-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="site-layout">
       {/* Top Navbar */}
-      <Header campaignActive={!!activeCampaign} />
+      <Header
+        onHomeClick={handleBackToCampaigns}
+        onHowItWorksClick={scrollToHowItWorks}
+      />
 
       {/* Main Content */}
       <main className="main-content-centered">

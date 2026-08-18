@@ -1,84 +1,45 @@
 import React, { useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
+import {
+  ShieldIcon,
+  PlusIcon,
+  ArrowRightIcon,
+  CustomTargetIcon,
+  TerminalIcon,
+} from './Icons';
 
 export interface Campaign {
   id: string;
   name: string;
+  category: string;
   description: string;
-  emoji: string;
+  indexCode?: string;
   isCustom?: boolean;
 }
-
-const PRESET_CAMPAIGNS: Campaign[] = [
-  {
-    id: '1am-wallet',
-    name: '1AM Midnight Wallet',
-    description: 'Browser extension wallet for Midnight Network transactions and ZK proving.',
-    emoji: '🌙',
-  },
-  {
-    id: 'compact-dx',
-    name: 'Compact Language Toolchain',
-    description: 'Smart contract language, compiler, and developer tooling for ZK circuits.',
-    emoji: '⚡',
-  },
-  {
-    id: 'proofstation',
-    name: 'ProofStation Prover API',
-    description: 'Cloud-hosted ZK proof generation service for dust-free transactions.',
-    emoji: '🔐',
-  },
-  {
-    id: 'midnight-indexer',
-    name: 'Midnight Indexer v4',
-    description: 'GraphQL API for querying on-chain state, blocks, and contract actions.',
-    emoji: '📡',
-  },
-  {
-    id: 'midnight-explorer',
-    name: 'Midnight Block Explorer',
-    description: 'Web interface for inspecting transactions, contracts, and network health.',
-    emoji: '🔍',
-  },
-];
 
 interface CampaignSelectorProps {
   onSelectCampaign: (campaign: Campaign) => void;
 }
 
+const CATEGORY_OPTIONS = [
+  'DEFI PROTOCOL',
+  'WALLET // CLIENT',
+  'SMART CONTRACTS',
+  'INFRASTRUCTURE',
+  'GOVERNANCE // DAO',
+  'DEVELOPER TOOLING',
+];
+
 export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCampaign }) => {
-  const { isConnected, connectWallet, isConnecting } = useMidnight();
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customName, setCustomName] = useState('');
-  const [customDesc, setCustomDesc] = useState('');
+  const { isConnected, connectWallet, isConnecting, network } = useMidnight();
+  const [showCreationForm, setShowCreationForm] = useState(false);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('DEFI PROTOCOL');
+  const [customCategory, setCustomCategory] = useState('');
+  const [description, setDescription] = useState('');
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customName.trim()) return;
-
-    const newCampaign: Campaign = {
-      id: customName.trim().toLowerCase().replace(/\s+/g, '-'),
-      name: customName.trim(),
-      description: customDesc.trim() || 'Custom feedback campaign',
-      emoji: '🎯',
-      isCustom: true,
-    };
-
-    // Save to localStorage for persistence
-    try {
-      const saved = window.localStorage.getItem('midnight_custom_campaigns');
-      const existing: Campaign[] = saved ? JSON.parse(saved) : [];
-      if (!existing.find((c) => c.id === newCampaign.id)) {
-        existing.push(newCampaign);
-        window.localStorage.setItem('midnight_custom_campaigns', JSON.stringify(existing));
-      }
-    } catch { /* ignore */ }
-
-    onSelectCampaign(newCampaign);
-  };
-
-  // Load saved custom campaigns from localStorage
-  const savedCampaigns: Campaign[] = (() => {
+  // Load user-created campaigns from localStorage
+  const userCampaigns: Campaign[] = (() => {
     try {
       const saved = window.localStorage.getItem('midnight_custom_campaigns');
       if (saved) {
@@ -89,29 +50,54 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
     return [];
   })();
 
-  const allCampaigns = [...PRESET_CAMPAIGNS, ...savedCampaigns];
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    const chosenCat = category === 'CUSTOM'
+      ? (customCategory.trim().toUpperCase() || 'GENERAL')
+      : category;
+
+    const newCampaign: Campaign = {
+      id: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      name: name.trim(),
+      category: `TARGET // ${chosenCat}`,
+      description: description.trim() || 'Verifiable zero-knowledge feedback campaign.',
+      indexCode: String(userCampaigns.length + 1).padStart(2, '0'),
+      isCustom: true,
+    };
+
+    // Persist to localStorage
+    try {
+      const existing: Campaign[] = userCampaigns.filter((c) => c.id !== newCampaign.id);
+      existing.unshift(newCampaign);
+      window.localStorage.setItem('midnight_custom_campaigns', JSON.stringify(existing));
+    } catch { /* ignore */ }
+
+    setShowCreationForm(false);
+    onSelectCampaign(newCampaign);
+  };
 
   return (
     <div className="campaign-selector-wrapper">
-      {/* Hero */}
-      <div className="protocol-hero">
-        <div className="hero-eyebrow">MIDNIGHT NETWORK • ZERO-KNOWLEDGE FEEDBACK PROTOCOL</div>
-        <h1 className="hero-headline">
-          ANONYMOUS FEEDBACK<br />
-          <span>FOR THE ECOSYSTEM.</span>
+      {/* Protocol Header */}
+      <div className="protocol-hero" style={{ textAlign: 'left', marginBottom: '2rem' }}>
+        <div className="hero-eyebrow">MIDNIGHT NETWORK • COMPACT ZK-SNARK</div>
+        <h1 className="hero-headline" style={{ fontSize: '1.8rem', letterSpacing: '0.01em', fontWeight: 700, margin: '0.2rem 0 0.4rem 0', color: 'var(--text-white)' }}>
+          ANONYMOUS FEEDBACK REGISTRY
         </h1>
-        <p className="hero-subtext">
-          Select a campaign to submit verifiable, privacy-preserving feedback. Your identity stays completely hidden — only aggregate sentiment is recorded on-chain.
+        <p className="hero-subtext" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+          Deploy evaluation targets, generate zero-knowledge share links, and collect private ratings on-chain.
         </p>
       </div>
 
       {/* Wallet Gate */}
-      {!isConnected && (
+      {!isConnected ? (
         <div className="campaign-wallet-gate">
-          <div className="gate-icon">🔒</div>
-          <h3 className="gate-title">CONNECT YOUR WALLET TO CONTINUE</h3>
+          <div className="gate-tag">AUTH REQUIRED</div>
+          <h3 className="gate-title">CONNECT WALLET TO CONTINUE</h3>
           <p className="gate-desc">
-            Link your 1AM Wallet or Lace extension to submit zero-knowledge feedback proofs to the Midnight Preview Network.
+            Link 1AM Wallet or Lace to interact with Midnight {network.toUpperCase()}.
           </p>
           <button
             type="button"
@@ -122,86 +108,179 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
             {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
           </button>
         </div>
-      )}
+      ) : showCreationForm ? (
+        /* ═══ CAMPAIGN CREATION INTERFACE ═══ */
+        <div className="creation-panel-wrapper">
+          <form onSubmit={handleCreateSubmit} className="protocol-form form-panel">
+            <div className="panel-bar">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <TerminalIcon size={14} color="var(--text-white)" />
+                <span className="panel-bar-title">NEW CAMPAIGN TARGET</span>
+              </div>
+              <span className="panel-bar-meta">CIRCUIT: REGISTRY</span>
+            </div>
 
-      {/* Campaign Grid */}
-      {isConnected && (
+            <div className="input-block">
+              <label className="input-label">PROJECT NAME</label>
+              <input
+                type="text"
+                required
+                className="protocol-input"
+                placeholder="e.g. Midnight Swap DEX"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="input-block">
+              <label className="input-label">CATEGORY</label>
+              <div className="segmented-grid">
+                {CATEGORY_OPTIONS.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`segment-btn ${category === cat ? 'active' : ''}`}
+                    onClick={() => setCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`segment-btn ${category === 'CUSTOM' ? 'active' : ''}`}
+                  onClick={() => setCategory('CUSTOM')}
+                >
+                  + CUSTOM
+                </button>
+              </div>
+              {category === 'CUSTOM' && (
+                <div style={{ marginTop: '6px' }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Category name..."
+                    className="protocol-input"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="input-block">
+              <label className="input-label">SCOPE (OPTIONAL)</label>
+              <input
+                type="text"
+                className="protocol-input"
+                placeholder="Brief focus area..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="custom-form-actions">
+              <button type="submit" className="btn-protocol-primary" disabled={!name.trim()}>
+                CREATE CAMPAIGN →
+              </button>
+              <button
+                type="button"
+                className="btn-protocol-secondary"
+                onClick={() => { setShowCreationForm(false); setName(''); setDescription(''); }}
+              >
+                CANCEL
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : userCampaigns.length === 0 ? (
+        /* ═══ CONCISE EMPTY STATE ═══ */
+        <div className="empty-campaign-state-card">
+          <div className="empty-state-badge">
+            <ShieldIcon size={24} color="#38bdf8" />
+          </div>
+          <h2 className="empty-state-heading">NO CAMPAIGNS REGISTERED</h2>
+          <p className="empty-state-description">
+            Create a campaign to generate a dedicated feedback link and collect zero-knowledge ratings.
+          </p>
+
+          <div className="empty-state-badges">
+            <span className="badge-tag">SPONSORED GAS (0 NIGHT)</span>
+            <span className="badge-tag">PRIVATE WITNESS PROOFS</span>
+            <span className="badge-tag">UNIQUE SHAREABLE SID</span>
+          </div>
+
+          <button
+            type="button"
+            className="btn-protocol-primary btn-create-first"
+            onClick={() => setShowCreationForm(true)}
+          >
+            <PlusIcon size={15} />
+            <span>CREATE YOUR FIRST CAMPAIGN</span>
+            <ArrowRightIcon size={14} />
+          </button>
+        </div>
+      ) : (
+        /* ═══ USER'S REGISTERED CAMPAIGNS ═══ */
         <>
           <div className="campaign-section-label">
-            <span className="section-tag">SELECT A CAMPAIGN</span>
-            <span className="section-meta">{allCampaigns.length} AVAILABLE</span>
+            <span className="section-tag">CAMPAIGNS</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="section-meta">{userCampaigns.length} ACTIVE</span>
+              <button
+                type="button"
+                className="btn-add-target-compact"
+                onClick={() => setShowCreationForm(true)}
+              >
+                <PlusIcon size={12} />
+                <span>NEW</span>
+              </button>
+            </div>
           </div>
 
           <div className="campaign-grid">
-            {allCampaigns.map((campaign) => (
+            {userCampaigns.map((campaign) => (
               <button
                 key={campaign.id}
                 type="button"
-                className="campaign-card"
+                className="campaign-card campaign-card-active"
                 onClick={() => onSelectCampaign(campaign)}
               >
-                <div className="campaign-card-emoji">{campaign.emoji}</div>
+                <div className="campaign-card-icon-box active-icon-box">
+                  <ShieldIcon size={18} color="var(--text-white)" />
+                </div>
                 <div className="campaign-card-body">
                   <h3 className="campaign-card-name">{campaign.name}</h3>
+                  <span className="directory-tag campaign-system-label">
+                    {campaign.category.replace('TARGET // ', 'TARGET: ')}
+                  </span>
                   <p className="campaign-card-desc">{campaign.description}</p>
                 </div>
-                <div className="campaign-card-arrow">→</div>
+                <div className="campaign-card-arrow">
+                  <ArrowRightIcon size={16} />
+                </div>
               </button>
             ))}
 
-            {/* Create Custom Campaign Card */}
+            {/* Restrained Dashed Create Campaign Action Card */}
             <button
               type="button"
-              className={`campaign-card campaign-card-custom ${showCustomForm ? 'expanded' : ''}`}
-              onClick={() => !showCustomForm && setShowCustomForm(true)}
+              className="campaign-card campaign-card-custom"
+              onClick={() => setShowCreationForm(true)}
             >
-              {!showCustomForm ? (
-                <>
-                  <div className="campaign-card-emoji">✨</div>
-                  <div className="campaign-card-body">
-                    <h3 className="campaign-card-name">Create Custom Campaign</h3>
-                    <p className="campaign-card-desc">Set up feedback for your own dApp, product, or DAO proposal.</p>
-                  </div>
-                  <div className="campaign-card-arrow">+</div>
-                </>
-              ) : (
-                <form onSubmit={handleCustomSubmit} className="custom-campaign-form" onClick={(e) => e.stopPropagation()}>
-                  <div className="input-block">
-                    <label className="input-label">CAMPAIGN NAME</label>
-                    <input
-                      type="text"
-                      required
-                      className="protocol-input"
-                      placeholder="e.g. My DeFi Protocol"
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                  <div className="input-block">
-                    <label className="input-label">DESCRIPTION (OPTIONAL)</label>
-                    <input
-                      type="text"
-                      className="protocol-input"
-                      placeholder="Brief description of what you're collecting feedback for..."
-                      value={customDesc}
-                      onChange={(e) => setCustomDesc(e.target.value)}
-                    />
-                  </div>
-                  <div className="custom-form-actions">
-                    <button type="submit" className="btn-protocol-primary" disabled={!customName.trim()}>
-                      START CAMPAIGN →
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-protocol-secondary"
-                      onClick={() => { setShowCustomForm(false); setCustomName(''); setCustomDesc(''); }}
-                    >
-                      CANCEL
-                    </button>
-                  </div>
-                </form>
-              )}
+              <div className="campaign-card-icon-box custom-icon-box">
+                <PlusIcon size={16} color="var(--text-muted)" />
+              </div>
+              <div className="campaign-card-body">
+                <h3 className="campaign-card-name custom-card-title">Create Campaign</h3>
+                <span className="directory-tag campaign-system-label">
+                  TARGET: ACTION
+                </span>
+                <p className="campaign-card-desc">Add a new evaluation target.</p>
+              </div>
+              <div className="campaign-card-arrow">
+                <PlusIcon size={16} />
+              </div>
             </button>
           </div>
         </>

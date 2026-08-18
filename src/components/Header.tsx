@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
+import { LayersIcon, ExternalLinkIcon } from './Icons';
 
 interface HeaderProps {
-  campaignActive?: boolean;
+  onHomeClick?: () => void;
+  onHowItWorksClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ campaignActive }) => {
+export const Header: React.FC<HeaderProps> = ({ onHomeClick, onHowItWorksClick }) => {
   const {
     network,
     isConnected,
@@ -23,31 +25,41 @@ export const Header: React.FC<HeaderProps> = ({ campaignActive }) => {
     <header className="protocol-header">
       <div className="header-inner container">
         {/* Brand */}
-        <div className="brand-group">
+        <div className="brand-group" onClick={onHomeClick} style={{ cursor: 'pointer' }}>
           <div className="brand-icon">
-            <span className="brand-dot glow-pulse" />
+            <LayersIcon size={20} color="#ffffff" />
           </div>
           <div className="brand-text">
-            <h1 className="brand-title">WHISPER FEEDBACK</h1>
-            <span className="brand-badge">MIDNIGHT NETWORK</span>
+            <h1 className="brand-title">MIDNIGHT WHISPER</h1>
+            <span className="brand-badge">ZK FEEDBACK PROTOCOL</span>
           </div>
         </div>
 
-        {/* Right Actions */}
-        <div className="header-right-group">
+        {/* Navigation Bar */}
+        <nav className="header-nav">
+          <button type="button" className="nav-link-btn" onClick={onHomeClick}>
+            CAMPAIGNS
+          </button>
+          <button type="button" className="nav-link-btn" onClick={onHowItWorksClick}>
+            HOW IT WORKS
+          </button>
           {contractAddress && (
             <a
               href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
               target="_blank"
               rel="noreferrer"
-              className="text-link-subtle"
+              className="nav-link-btn nav-link-external"
             >
-              Explorer ↗
+              <span>EXPLORER</span>
+              <ExternalLinkIcon size={11} />
             </a>
           )}
+        </nav>
 
+        {/* Right Actions: Network & Wallet */}
+        <div className="header-right-group">
           {isConnected && (
-            <span className="header-network-badge">{network}</span>
+            <span className="header-network-badge">{network.toUpperCase()}</span>
           )}
 
           {!isConnected ? (
