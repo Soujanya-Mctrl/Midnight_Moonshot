@@ -106,10 +106,14 @@ export function App() {
     }
   };
 
-  const scrollToHowItWorks = () => {
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+
+  const toggleHowItWorks = () => {
     const el = document.getElementById('how-it-works-section');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setShowHowItWorks((prev) => !prev);
     }
   };
 
@@ -118,7 +122,7 @@ export function App() {
       {/* Top Navbar */}
       <Header
         onHomeClick={handleBackToCampaigns}
-        onHowItWorksClick={scrollToHowItWorks}
+        onHowItWorksClick={toggleHowItWorks}
       />
 
       {/* Main Content */}
@@ -141,6 +145,53 @@ export function App() {
           )}
         </div>
       </main>
+
+      {/* How It Works Modal */}
+      {showHowItWorks && (
+        <div className="modal-backdrop" onClick={() => setShowHowItWorks(false)}>
+          <div className="modal-card" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">HOW IT WORKS // PROTOCOL ARCHITECTURE</span>
+              <button type="button" className="btn-modal-close" onClick={() => setShowHowItWorks(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="how-it-works-steps-grid">
+              <div className="how-step-card">
+                <span className="how-step-num">01 // TARGET REGISTRATION</span>
+                <h4 className="how-step-title">Create Evaluation Target</h4>
+                <p className="how-step-desc">
+                  Deploy a campaign for your dApp, wallet, or smart contract. Each target receives a cryptographically unique identifier.
+                </p>
+              </div>
+
+              <div className="how-step-card">
+                <span className="how-step-num">02 // ZK SHARE LINK</span>
+                <h4 className="how-step-title">Distribute 0-Gas Link</h4>
+                <p className="how-step-desc">
+                  Generate a shareable feedback URL containing an 8-character random session ID (`sid`). Submitters incur zero gas costs.
+                </p>
+              </div>
+
+              <div className="how-step-card">
+                <span className="how-step-num">03 // BROWSER WITNESS PROOF</span>
+                <h4 className="how-step-title">Compute Off-Chain ZK Proof</h4>
+                <p className="how-step-desc">
+                  Users select a rating and note. The Compact ZK-SNARK circuit evaluates the proof in local browser memory. Wallet addresses are never published.
+                </p>
+              </div>
+
+              <div className="how-step-card">
+                <span className="how-step-num">04 // VERIFIABLE AGGREGATES</span>
+                <h4 className="how-step-title">On-Chain State Commit</h4>
+                <p className="how-step-desc">
+                  The Midnight ledger verifies the proof transcript, updating public aggregate metrics while preserving 100% individual privacy.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="site-footer">

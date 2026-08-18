@@ -512,11 +512,14 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
         </div>
       </div>
 
-      {/* Activity Log */}
-      {campaignFeed.length > 0 && (
-        <div className="dashboard-section" style={{ marginTop: '2rem' }}>
-          <div className="dashboard-section-header">
-            <span className="dashboard-section-title">RECENT PROOFS LOG</span>
+      {/* Submitted Feedback Stream / Log */}
+      <div className="dashboard-section" style={{ marginTop: '1.75rem' }}>
+        <div className="dashboard-section-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span className="dashboard-section-title">SUBMITTED FEEDBACK LOG</span>
+            <span className="section-meta">{campaignFeed.length} {campaignFeed.length === 1 ? 'RECORD' : 'RECORDS'}</span>
+          </div>
+          {campaignFeed.length > 0 && (
             <button
               type="button"
               className="btn-clear-activity"
@@ -524,8 +527,19 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
             >
               CLEAR LOG
             </button>
-          </div>
+          )}
+        </div>
 
+        {campaignFeed.length === 0 ? (
+          <div className="empty-protocol-state compact" style={{ padding: '2.5rem 1rem', textTransform: 'none' }}>
+            <div style={{ fontFamily: 'Space Grotesk', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-white)', marginBottom: '0.25rem' }}>
+              No feedback submitted yet for {campaign.name}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+              Be the first to submit a zero-knowledge rating using the form above!
+            </p>
+          </div>
+        ) : (
           <div className="activity-table">
             <div className="table-header-row">
               <span className="col-score">SCORE</span>
@@ -545,23 +559,21 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
                     : item.hash}
                 </span>
                 <span className="col-action">
-                  {contractAddress && (
-                    <a
-                      href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="row-action-link"
-                    >
-                      <span>INSPECT</span>
-                      <ExternalLinkIcon size={11} />
-                    </a>
-                  )}
+                  <a
+                    href={contractAddress ? `https://explorer.preview.midnight.network/contracts/stream/${contractAddress}` : 'https://explorer.preview.midnight.network'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="row-action-link"
+                  >
+                    <span>INSPECT</span>
+                    <ExternalLinkIcon size={11} />
+                  </a>
                 </span>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

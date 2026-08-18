@@ -43,17 +43,15 @@ export const Header: React.FC<HeaderProps> = ({ onHomeClick, onHowItWorksClick }
           <button type="button" className="nav-link-btn" onClick={onHowItWorksClick}>
             HOW IT WORKS
           </button>
-          {contractAddress && (
-            <a
-              href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
-              target="_blank"
-              rel="noreferrer"
-              className="nav-link-btn nav-link-external"
-            >
-              <span>EXPLORER</span>
-              <ExternalLinkIcon size={11} />
-            </a>
-          )}
+          <a
+            href={contractAddress ? `https://explorer.preview.midnight.network/contracts/stream/${contractAddress}` : 'https://explorer.preview.midnight.network'}
+            target="_blank"
+            rel="noreferrer"
+            className="nav-link-btn nav-link-external"
+          >
+            <span>EXPLORER</span>
+            <ExternalLinkIcon size={11} />
+          </a>
         </nav>
 
         {/* Right Actions: Network & Wallet */}
