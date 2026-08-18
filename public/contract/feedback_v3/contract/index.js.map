@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../",
+  "sources": ["contracts/feedback.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAOA,AAAA,cAUC;;;;;cAV6B,QAAgB;;;;;;;;;;;;;;;;;;yCAAhB,QAAgB;;;;;;;;;gDAAhB,QAAgB;;;OAU7C;;;;GACA;EAlBD;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAGA;;;;;;;;;yEAAuC;IACvC;;;;;;;;;yEAAkC;IAClC;;;;;;;;;yEAAsC;;;;;;;GAarC;EAXD,AAAA,iBAUC,4BAV6B,QAAgB;4BACrC,QAAM;4BACN,QAAM;UAEP,YAA6B,GAAP,QAAM;UAClC,KAAc;;;;;6CAAI;;;;;;;;;;;kHAAc;;;IAAhC;;;;;;;2HAAA,KAAc;;yEAAA;UACd,KAAS;;;;;6CAAI;;;;;;;;;;;kHAAS;;qBAAG,YAAU;IAAnC;;;;;;;2HAAA,KAAS;;yEAAA;UAEH,YAAoC,GAAvB,YAAU;UAC7B,KAAa;;;;;6CAAI;;;;;;;;;;;kHAAa;;qBAAG,YAAU;IAA3C;;;;;;;2HAAA,KAAa;;yEAAA;;GACd;;;;;;;;;;;;;;;;IAdD;qCAAA;;;;;;;;;;;0GAAuC;KAAA;IACvC;qCAAA;;;;;;;;;;;0GAAkC;KAAA;IAClC;qCAAA;;;;;;;;;;;0GAAsC;KAAA;;;;;;;;;;"
+}

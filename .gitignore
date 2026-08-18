@@ -2,12 +2,13 @@
 /node_modules
 /logs
 /dist
+/scratch
 /.midnight-expert
 /midnight-level-db
 
-# Allow compiled counter contract managed files
-!/managed/counter
-!/managed/counter/**
+# Allow compiled feedback contract managed files
+!/managed/feedback
+!/managed/feedback/**
 
 # Agent & Claude config directories
 .agents
@@ -19,7 +20,6 @@
 .env.*
 !.env.example
 !.env.preview.example
-!.env.preprod.example
 .envrc
 .midnight-seed
 .midnight-state.json

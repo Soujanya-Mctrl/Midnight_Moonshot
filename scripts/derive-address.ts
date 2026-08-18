@@ -3,7 +3,12 @@ import { HDWallet, Roles } from '@midnight-ntwrk/wallet-sdk-hd';
 import { createKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import { Buffer } from 'buffer';
 
-const seedHex = process.env.MIDNIGHT_PREVIEW_SEED || '9aadb11c836bcce8fd6c41520cf5ecd6534942d3e4c67da9bb4fc398eab93981';
+const seedHex = process.env.MIDNIGHT_PREVIEW_SEED?.trim();
+
+if (!seedHex) {
+  console.error('❌ Error: MIDNIGHT_PREVIEW_SEED environment variable is required.');
+  process.exit(1);
+}
 
 setNetworkId('preview');
 

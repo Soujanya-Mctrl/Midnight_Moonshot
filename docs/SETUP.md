@@ -45,7 +45,8 @@ npm run dev
 
 ## 4. Testnet Deployment
 
-Active Preview Contract: `07ea1c598023eade80a88d01d30ef0758415be7dee6fe6e5a95a22fc69e94ea5`
+- **Contract Address**: `b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac`
+- **Explorer**: `https://explorer.preview.midnight.network/contracts/stream/b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac`
 
 To deploy or verify on Midnight Preview Testnet:
 

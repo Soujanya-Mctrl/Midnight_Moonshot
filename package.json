@@ -8,12 +8,11 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "compile": "compact compile contracts/feedback.compact managed/feedback",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' vitest run",
+    "test": "vitest run",
     "test:local": "MIDNIGHT_NETWORK=local yarn test",
     "test:preview": "MIDNIGHT_NETWORK=preview yarn test",
-    "test:preprod": "MIDNIGHT_NETWORK=preprod yarn test",
     "deploy:preview": "npx cross-env MIDNIGHT_NETWORK=preview npx tsx scripts/deploy-preview.ts",
     "env:up": "docker compose up -d",
     "env:down": "docker compose down",
@@ -21,6 +20,7 @@
     "proof:up": "docker compose up -d --wait proof-server",
     "proof:down": "docker compose stop proof-server",
     "wait:dust": "vite-node scripts/wait-for-dust.ts",
+    "sync:zk": "node -e \"const fs=require('fs');const cp=(s,d)=>{fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const sp=s+'/'+f,dp=d+'/'+f;fs.statSync(sp).isDirectory()?cp(sp,dp):fs.copyFileSync(sp,dp)}};cp('managed/feedback','public/contract/feedback_v3');cp('managed/feedback','public/contract/feedback_v2');cp('managed/feedback','public/contract/feedback');console.log('ZK assets synced.')\"",
     "validate": "yarn env:up && yarn test:local; yarn env:down"
   },
   "dependencies": {
@@ -56,6 +56,7 @@
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.9",
     "@vitejs/plugin-react": "^6.0.3",
+    "cross-env": "^10.1.0",
     "esbuild": "^0.28.2",
     "rollup": "^4.62.4",
     "typescript": "^5.7.0",

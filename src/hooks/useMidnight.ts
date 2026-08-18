@@ -9,6 +9,8 @@ import {
   createFeedbackPublicDataProvider,
   createConnectedSession,
   detectInjectedWalletProviders,
+  deployFeedbackContract,
+  submitFeedbackTx,
   formatNetworkLabel,
   getFeedbackLedgerState,
   waitForFeedbackLedgerState,
@@ -50,7 +52,10 @@ export interface MidnightHookState {
   connectedAPI: any;
 }
 
-const LOCAL_STORAGE_KEY = 'midnight_feedback_contract_address';
+const LOCAL_STORAGE_KEY = 'midnight_feedback_contract_address_v4';
+const LEGACY_STORAGE_KEY = 'midnight_feedback_contract_address';
+const LEGACY_STORAGE_KEY_V2 = 'midnight_feedback_contract_address_v2';
+const LEGACY_STORAGE_KEY_V3 = 'midnight_feedback_contract_address_v3';
 
 const MidnightContext = createContext<MidnightHookState | undefined>(undefined);
 
@@ -136,7 +141,14 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
       return null;
     }
 
-    return window.localStorage.getItem(LOCAL_STORAGE_KEY) || ((import.meta as any).env?.VITE_CONTRACT_ADDRESS as string) || null;
+    // Clear legacy contract address keys from browser storage
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY_V2);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY_V3);
+
+    const saved = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    const envAddr = (import.meta as any).env?.VITE_CONTRACT_ADDRESS as string;
+    return (saved && saved.trim()) ? saved.trim() : (envAddr && envAddr.trim()) ? envAddr.trim() : 'b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac';
   });
   const [isDeploying, setIsDeploying] = useState(false);
   const [isCallingCircuit, setIsCallingCircuit] = useState(false);
@@ -245,25 +257,10 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     setError(null);
 
     try {
-      const compiledContract = createFeedbackCompiledContract();
-      const unprovenDeployTx = await createUnprovenDeployTx(session.providers as any, {
-        compiledContract,
-        signingKey: sampleSigningKey(),
-      });
-
-      const contractAddressHex = unprovenDeployTx.public.contractAddress;
-      const txId = await submitTxAsync(session.providers as any, {
-        unprovenTx: unprovenDeployTx.private.unprovenTx,
-      });
-
-      setLastTxHash(txId);
+      const contractAddressHex = await deployFeedbackContract(session);
+      setLastTxHash('Contract Deployed');
       setContractAddress(contractAddressHex);
-      await session.providers.privateStateProvider.setContractAddress(contractAddressHex);
-      await session.providers.privateStateProvider.setSigningKey(contractAddressHex, unprovenDeployTx.private.signingKey);
-      await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
-      await waitForFeedbackLedgerState(session.providers.publicDataProvider, contractAddressHex);
       await fetchLiveContractState();
-
       return contractAddressHex;
     } catch (deployError: any) {
       setError(deployError?.message ?? 'Contract deployment failed.');
@@ -285,31 +282,15 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
         return null;
       }
 
-      const ratingBigInt = BigInt(Math.max(1, Math.min(5, Math.round(rating))));
+      const ratingNum = Math.max(1, Math.min(5, Math.round(rating)));
       setIsCallingCircuit(true);
       setError(null);
 
       try {
-        const compiledContract = createFeedbackCompiledContract();
-        const previousTotal = feedbackState ? feedbackState.totalResponses : 0;
-        const unprovenCallTx = await createUnprovenCallTx(session.providers as any, {
-          compiledContract,
-          contractAddress,
-          circuitId: FEEDBACK_CIRCUIT_ID,
-          args: [ratingBigInt],
-        });
-
-        const txId = await submitTxAsync(session.providers as any, {
-          unprovenTx: unprovenCallTx.private.unprovenTx,
-          circuitId: FEEDBACK_CIRCUIT_ID,
-        });
-
-        setLastTxHash(txId);
-        await waitForTransactionIndexing(session.providers.publicDataProvider, txId);
-        await waitForFeedbackLedgerState(session.providers.publicDataProvider, contractAddress, previousTotal + 1);
+        const txId = await submitFeedbackTx(session, contractAddress, ratingNum);
+        setLastTxHash(typeof txId === 'string' ? txId : 'Transaction Submitted');
         await fetchLiveContractState();
-
-        return txId;
+        return typeof txId === 'string' ? txId : 'tx_confirmed';
       } catch (callError: any) {
         setError(callError?.message ?? 'Anonymous feedback submission failed.');
         await fetchLiveContractState();
@@ -318,7 +299,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
         setIsCallingCircuit(false);
       }
     },
-    [contractAddress, feedbackState, fetchLiveContractState, session],
+    [contractAddress, fetchLiveContractState, session],
   );
 
   const disconnectWallet = useCallback(() => {
@@ -342,6 +323,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
   const resetContractAddress = useCallback(() => {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     }
     setContractAddress(null);
     setFeedbackState(null);

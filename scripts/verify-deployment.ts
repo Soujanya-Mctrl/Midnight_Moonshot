@@ -91,5 +91,8 @@ export async function verifyContractDeployment(
 }
 
 // CLI entrypoint
-const addressArg = process.argv[2] || process.env.VITE_CONTRACT_ADDRESS || '07ea1c598023eade80a88d01d30ef0758415be7dee6fe6e5a95a22fc69e94ea5';
-verifyContractDeployment(addressArg).catch(console.error);
+const contractAddress =
+  process.env['VITE_CONTRACT_ADDRESS'] ??
+  process.env['NEXT_PUBLIC_MIDNIGHT_CONTRACT_ADDRESS'] ??
+  'b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac';
+verifyContractDeployment(contractAddress).catch(console.error);

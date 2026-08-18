@@ -18,18 +18,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'yarn'
 
       - name: 3. Install Compact Compiler
-        uses: midnightntwrk/setup-compact-action@v1
-        with:
-          compact-version: '0.23.0'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: 4. Install dependencies
-        run: yarn install --frozen-lockfile || yarn install
+        run: npm install
 
-      - name: 5. Compact compile
+      - name: 5. Compile Compact Contract
         run: compact compile contracts/feedback.compact managed/feedback
 
       - name: 6. Run test suite
-        run: npx vitest run tests/feedback.test.ts
+        run: npx vitest run
+
+      - name: 7. Build Frontend
+        run: npm run build

@@ -9,11 +9,17 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
   },
   build: {
     target: 'esnext',
   },
   optimizeDeps: {
+    force: true,
     include: ['object-inspect', 'buffer', '@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/ledger-v8', '@midnight-ntwrk/onchain-runtime-v3'],
     esbuildOptions: {
       target: 'esnext',

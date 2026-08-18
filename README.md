@@ -1,136 +1,81 @@
 # Midnight Whisper // Anonymous Feedback & Sentiment Protocol
 
-[![CI Pipeline](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml/badge.svg)](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml)
-
-> A privacy-preserving Anonymous Feedback & Survey platform built on the Midnight Network using Compact smart contracts and a modern React + Vite glassmorphic web application.
-
----
-
 ## Live Demo
-
 [https://midnightmoonshot.vercel.app](https://midnightmoonshot.vercel.app)
 
----
-
 ## Contract Address
+| Network  | Address                                                          |
+|----------|------------------------------------------------------------------|
+| Preview  | `b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac` |
 
-| Network  | Address                                                          | Explorer Link |
-|----------|------------------------------------------------------------------|---------------|
-| Preview  | `07ea1c598023eade80a88d01d30ef0758415be7dee6fe6e5a95a22fc69e94ea5` | [View on Midnight Preview Explorer](https://explorer.preview.midnight.network/contracts/stream/07ea1c598023eade80a88d01d30ef0758415be7dee6fe6e5a95a22fc69e94ea5) |
-
----
+[View on Midnight Preview Explorer](https://explorer.preview.midnight.network/contracts/stream/b7840834b9d2c13eeb676efa94271ee3e8b28cdab086b8212675d11f965aa8ac)
 
 ## What This Does
+Midnight Whisper allows community members, employees, and users to submit verifiable feedback ratings (1 to 5 stars) and confidential comments without linking their wallet address or real-world identity to their response on-chain.
 
-**Midnight Whisper** provides a zero-knowledge anonymous feedback and satisfaction sentiment protocol on the Midnight Network (Preview Testnet).
+The smart contract maintains aggregate statistics (`totalResponses`, `ratingSum`, `positiveCount`) while ensuring each submission generates a zero-knowledge proof proving valid rating bounds without exposing individual user identities.
 
-Users connect their **1 AM Wallet** or **Lace Wallet** to submit confidential ratings (1 to 5 stars) and private memos. The client synthesizes a zero-knowledge proof ensuring the score is valid without ever disclosing the user's wallet address or raw comments on the public ledger.
+## Privacy Model
+- **PUBLIC**: Aggregate metrics on the ledger (`totalResponses`, `ratingSum`, `positiveCount`, and global sentiment scores).
+- **PRIVATE**: Submitter wallet address, client-side rating witness, and encrypted raw feedback text.
+- **PROVED without revealing**: That the rating is an integer between 1 and 5 and the aggregate state transitions are computed correctly, without revealing the submitter's identity or specific individual response.
 
----
+## Privacy Claim
+- **What an on-chain observer sees**: The incrementing of `totalResponses`, updated `ratingSum`, updated `positiveCount`, and the zero-knowledge transaction validity proof on the ledger.
+- **What an on-chain observer cannot see**: Who submitted the feedback, the submitter's wallet address, the timestamp linkability, or the raw private comment payload.
 
-## Zero-Knowledge Privacy Model
+## Tech Stack
+- **Smart Contract Language**: Compact v0.23 (`contracts/feedback.compact`)
+- **Blockchain Network**: Midnight Network (Preview Testnet)
+- **Proving Service**: 1AM ProofStation (`https://api-preview.1am.xyz`) / Local Proof Server
+- **Client & Wallet**: 1AM Wallet / Lace Wallet via `@midnight-ntwrk/dapp-connector-api`
+- **Frontend**: React 19, TypeScript, Vite, CSS Glassmorphism
+- **Testing**: Vitest (`tests/feedback.test.ts`)
+- **CI/CD**: GitHub Actions (`.github/workflows/ci.yml`)
 
-- **What is PUBLIC (On-Chain Ledger State):**
-  - `totalResponses`: The total number of verified submissions.
-  - `ratingSum`: The cumulative score sum for aggregate satisfaction computation.
-  - `positiveCount`: The count of positive entries (rating >= 3 stars).
-- **What is PRIVATE (Client-Side Witness):**
-  - Submitter wallet address (never written to ledger state).
-  - Raw feedback memo text (processed locally in browser memory).
-  - Private rating value before circuit disclosure.
-- **Zero-Knowledge Privacy Claim:**
-  - An on-chain observer or block explorer sees the updated public aggregate counters on the Midnight ledger, but **CANNOT** infer or link which wallet address submitted any individual feedback or rating.
+## Prerequisites
+- **Node.js**: v22.x or higher
+- **npm** or **yarn**
+- **1AM Wallet Browser Extension** (configured for Midnight Preview Testnet)
+- **tNIGHT Tokens** (from [Midnight Preview Faucet](https://faucet.preview.midnight.network))
 
----
-
-## Compact Smart Contract (`feedback.compact`)
-
-```compact
-pragma language_version 0.23;
-
-export ledger totalResponses: Uint<32>;
-export ledger ratingSum: Uint<32>;
-export ledger positiveCount: Uint<32>;
-
-export circuit submitFeedback(rating: Uint<32>): [] {
-  assert rating >= 1 "Rating must be at least 1 star";
-  assert rating <= 5 "Rating cannot exceed 5 stars";
-
-  const discRating = disclose(rating);
-  totalResponses = (totalResponses + 1) as Uint<32>;
-  ratingSum = (ratingSum + discRating) as Uint<32>;
-
-  if (discRating >= 3) {
-    positiveCount = (positiveCount + 1) as Uint<32>;
-  }
-}
-```
-
----
-
-## Project Structure
-
-```text
-my-project/
-├── contracts/
-│   ├── feedback.compact        # Compact smart contract
-│   └── index.ts                # Contract exports & ZK config path
-├── managed/
-│   └── feedback/               # Compiled TypeScript & JS artifacts
-├── src/
-│   ├── components/
-│   │   ├── Header.tsx          # Modern HUD navigation bar
-│   │   ├── MetricsDashboard.tsx# Live on-chain analytics & sentiment
-│   │   ├── FeedbackStudio.tsx  # Interactive star rating & ZK submitter
-│   │   ├── PrivacyInspector.tsx# ZK privacy audit visualizer
-│   │   ├── LiveFeedStream.tsx  # Recent transaction feed
-│   │   └── WalletConnect.tsx   # 1 AM / Lace wallet connector
-│   ├── hooks/
-│   │   └── useMidnight.ts      # React hook for Midnight state & ZK proving
-│   ├── lib/
-│   │   └── midnight.ts         # Midnight.js SDK integration & providers
-│   ├── App.tsx                 # Master Dashboard Layout
-│   └── main.tsx
-├── tests/
-│   └── feedback.test.ts        # Vitest suite for circuits & state
-├── .github/
-│   └── workflows/
-│       └── ci.yml              # Automated GitHub Actions CI pipeline
-├── PROPOSAL.md                 # Project architecture & privacy proposal
-├── README.md
-└── package.json
-```
-
----
-
-## Quick Start (Run Locally)
-
-1. **Install dependencies:**
+## Setup & Run Locally
+1. **Clone the repository**:
    ```bash
-   yarn install
+   git clone https://github.com/Soujanya-Mctrl/Midnight_Moonshot.git
+   cd Midnight_Moonshot
    ```
 
-2. **Run local dev server:**
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**:
+   Create a `.env` file from `.env.preview.example`:
+   ```bash
+   cp .env.preview.example .env
+   ```
+
+4. **Start the local development server**:
    ```bash
    npm run dev
    ```
+   Open `http://localhost:5173` in your browser.
 
-3. **Run unit tests:**
-   ```bash
-   yarn test
-   ```
+## Run Tests
+```bash
+npm test
+```
 
-4. **Build production bundle:**
-   ```bash
-   npm run build
-   ```
+## CI/CD
+The continuous integration pipeline in `.github/workflows/ci.yml` runs automatically on every `push` and `pull_request` to the `main` branch. It executes:
+1. **Source Checkout**: Clones the repository codebase.
+2. **Node Setup**: Configures Node.js v22 environment.
+3. **Dependency Installation**: Runs clean `npm install`.
+4. **Contract Compilation**: Compiles `contracts/feedback.compact` using the official Midnight Compact compiler.
+5. **Test Suite**: Executes all Vitest unit tests verifying circuit logic, state transitions, and zero-knowledge privacy guarantees.
+6. **Frontend Build**: Validates production bundling with `npm run build`.
 
----
-
-## Tech Stack
-
-- **Blockchain**: Midnight Network (Preview Testnet)
-- **Smart Contracts**: Compact Language v0.23
-- **SDK**: Midnight.js DApp Connector API (`@midnight-ntwrk/dapp-connector-api`)
-- **Frontend**: React 19, Vite, TypeScript, Lucide Icons, Vanilla Glassmorphic CSS
-- **Wallets**: 1 AM Wallet, Lace Wallet
+## Product Proposal
+See [PROPOSAL.md](PROPOSAL.md)

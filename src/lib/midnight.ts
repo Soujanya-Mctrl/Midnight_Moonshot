@@ -7,10 +7,12 @@ if (typeof globalThis !== 'undefined' && !(globalThis as any).Buffer) {
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { MidnightProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { MidnightProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types'; // 2024-05-22T12:00:00Z
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { createUnprovenDeployTx, submitCallTxAsync, submitTxAsync } from '@midnight-ntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { Contract as FeedbackContract, ledger as feedbackLedger } from '../../managed/feedback/contract/index.js';
 
 export type InjectedWalletProvider = {
@@ -52,7 +54,7 @@ export type ConnectedSession = {
 
 export const FEEDBACK_CONTRACT_NAME = 'FeedbackContract';
 export const FEEDBACK_CIRCUIT_ID = 'submitFeedback' as const;
-export const FEEDBACK_CONTRACT_ASSET_BASE_URL = '/contract/feedback';
+export const FEEDBACK_CONTRACT_ASSET_BASE_URL = '/contract/feedback_v3';
 
 export interface FeedbackLedgerData {
   totalResponses: number;
@@ -149,8 +151,19 @@ export async function connectInjectedWallet(
   throw lastError instanceof Error ? lastError : new Error('Unable to connect wallet.');
 }
 
+export function normalizeNetworkId(id?: string): string {
+  if (!id) return 'preview';
+  const clean = id.toLowerCase().trim();
+  if (clean.includes('preview')) return 'preview';
+  if (clean.includes('preprod')) return 'preprod';
+  if (clean.includes('mainnet')) return 'mainnet';
+  if (clean.includes('undeployed') || clean.includes('local')) return 'undeployed';
+  return 'preview';
+}
+
 export function resolveWalletConfig(rawConfig: any): NormalizedWalletConfig {
-  const networkId = rawConfig?.networkId ?? rawConfig?.network ?? 'preview';
+  const rawNetworkId = rawConfig?.networkId ?? rawConfig?.network ?? 'preview';
+  const networkId = normalizeNetworkId(rawNetworkId);
   const indexerUri = rawConfig?.indexerUri ?? rawConfig?.indexer ?? rawConfig?.indexerUrl ?? '';
   const indexerWsUri = rawConfig?.indexerWsUri ?? rawConfig?.indexerWSUri ?? rawConfig?.indexerWs ?? rawConfig?.indexerWS ?? '';
   const nodeUri = rawConfig?.nodeUri ?? rawConfig?.node ?? rawConfig?.nodeUrl ?? '';
@@ -310,9 +323,19 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
   const config = resolveWalletConfig(configResult);
   setNetworkId(config.networkId);
 
+  const cacheBustingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const url = new URL(urlStr, window.location.origin);
+    url.searchParams.set('t', Date.now().toString());
+    return window.fetch(url.toString(), {
+      ...init,
+      cache: 'no-store',
+    });
+  };
+
   const zkConfigProvider = new FetchZkConfigProvider<string>(
     new URL(`${FEEDBACK_CONTRACT_ASSET_BASE_URL}/`, window.location.origin).toString(),
-    window.fetch.bind(window),
+    cacheBustingFetch as any,
   );
 
   const provingProvider = await api.getProvingProvider(zkConfigProvider);
@@ -445,3 +468,74 @@ export async function waitForTransactionIndexing(
 
   throw new Error(`Transaction ${txId} was not indexed after waiting.`);
 }
+
+export async function deployFeedbackContract(session: ConnectedSession): Promise<string> {
+  const { createUnprovenDeployTx, submitTxAsync } = await import('@midnight-ntwrk/midnight-js-contracts');
+  const { sampleSigningKey } = await import('@midnight-ntwrk/compact-runtime');
+
+  const initialPrivateState = {};
+  await session.providers.privateStateProvider.setContractAddress('');
+  await session.providers.privateStateProvider.set('FeedbackPrivateState', initialPrivateState);
+
+  const deployTxData = await (createUnprovenDeployTx as any)(
+    session.providers,
+    {
+      compiledContract: createFeedbackCompiledContract(),
+      args: [],
+      privateStateId: 'FeedbackPrivateState',
+      initialPrivateState,
+      signingKey: sampleSigningKey(),
+    },
+  );
+
+  const contractAddress = deployTxData.public.contractAddress;
+
+  await (submitTxAsync as any)(session.providers, {
+    unprovenTx: deployTxData.private.unprovenTx,
+  });
+
+  await session.providers.privateStateProvider.setContractAddress(contractAddress);
+  await session.providers.privateStateProvider.set('FeedbackPrivateState', initialPrivateState);
+  await session.providers.privateStateProvider.setSigningKey(
+    contractAddress,
+    deployTxData.private.signingKey,
+  );
+
+  return contractAddress;
+}
+
+export async function submitFeedbackTx(
+  session: ConnectedSession,
+  contractAddress: string,
+  rating: number,
+): Promise<string> {
+  const { createUnprovenCallTx, submitTxAsync } = await import('@midnight-ntwrk/midnight-js-contracts');
+
+  await session.providers.privateStateProvider.setContractAddress(contractAddress);
+
+  const currentPrivateState = await session.providers.privateStateProvider.get('FeedbackPrivateState');
+  if (!currentPrivateState) {
+    await session.providers.privateStateProvider.set('FeedbackPrivateState', {});
+  }
+
+  const unprovenCallTx = await (createUnprovenCallTx as any)(
+    session.providers,
+    {
+      compiledContract: createFeedbackCompiledContract(),
+      contractAddress,
+      circuitId: FEEDBACK_CIRCUIT_ID,
+      args: [BigInt(rating)],
+      privateStateId: 'FeedbackPrivateState',
+    },
+  );
+
+  const txId = await (submitTxAsync as any)(session.providers, {
+    unprovenTx: unprovenCallTx.private.unprovenTx,
+    circuitId: FEEDBACK_CIRCUIT_ID,
+  });
+
+  return txId;
+}
+
+
+

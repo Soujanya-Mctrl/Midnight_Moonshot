@@ -16,8 +16,6 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
     contractAddress,
     availableWallets,
     isConnecting,
-    isDeploying,
-    deployContract,
     connectWallet,
     disconnectWallet,
   } = useMidnight();
@@ -33,21 +31,19 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
 
   return (
     <header className="protocol-header">
-      <div className="header-inner">
+      <div className="header-inner container">
         {/* Brand */}
-        <div className="brand-lockup" onClick={() => setActivePage('submit')}>
-          <div className="brand-symbol">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+        <div className="brand-group">
+          <div className="brand-icon">
+            <span className="brand-dot glow-pulse" />
           </div>
-          <span className="brand-text">MIDNIGHT WHISPER</span>
-          <span className="network-pill">{network}</span>
+          <div className="brand-text">
+            <h1 className="brand-title">WHISPER FEEDBACK</h1>
+            <span className="brand-badge">MIDNIGHT NETWORK</span>
+          </div>
         </div>
 
-        {/* Flat Text Nav */}
+        {/* Navigation Tabs */}
         <nav className="header-nav">
           {navItems.map((item) => (
             <button
@@ -64,18 +60,6 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
 
         {/* Right Actions */}
         <div className="header-right-group">
-          {isConnected && (
-            <button
-              type="button"
-              className="btn-header-deploy"
-              onClick={() => deployContract()}
-              disabled={isDeploying}
-              title="Deploy a new instance of the FeedbackContract via connected wallet"
-            >
-              {isDeploying ? 'DEPLOYING...' : 'DEPLOY CONTRACT'}
-            </button>
-          )}
-
           {contractAddress && (
             <a
               href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}

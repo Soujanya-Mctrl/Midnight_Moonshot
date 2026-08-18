@@ -31,9 +31,6 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
   const {
     isConnected,
     isCallingCircuit,
-    isDeploying,
-    deployContract,
-    resetContractAddress,
     lastTxHash,
     error,
     contractAddress,
@@ -270,37 +267,20 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
               <div className="contract-address-display">
                 <div className="input-label-split">
                   <span className="addr-label">ON-CHAIN ADDRESS</span>
-                  {contractAddress && (
-                    <button
-                      type="button"
-                      className="btn-text-reset"
-                      onClick={resetContractAddress}
-                      title="Clear saved contract address"
-                    >
-                      RESET
-                    </button>
-                  )}
                 </div>
                 <span className="addr-value">{contractAddress || 'Not Deployed'}</span>
               </div>
 
-              {isConnected ? (
-                <button
-                  type="button"
-                  className="btn-deploy-instance"
-                  onClick={() => deployContract()}
-                  disabled={isDeploying}
+              {contractAddress && (
+                <a
+                  href={`https://explorer.preview.midnight.network/contracts/stream/${contractAddress}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-deploy-instance text-center"
+                  style={{ display: 'block', textDecoration: 'none' }}
                 >
-                  {isDeploying ? 'DEPLOYING CONTRACT VIA WALLET...' : '⚡ DEPLOY NEW CONTRACT INSTANCE'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-deploy-instance"
-                  onClick={() => connectWallet()}
-                >
-                  CONNECT WALLET TO DEPLOY
-                </button>
+                  VIEW CONTRACT ON EXPLORER ↗
+                </a>
               )}
             </div>
           </div>
