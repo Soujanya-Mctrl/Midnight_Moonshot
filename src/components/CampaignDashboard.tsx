@@ -61,9 +61,22 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   const [comment, setComment] = useState<string>('');
   const [copiedHash, setCopiedHash] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLinkId, setShareLinkId] = useState<string>('');
   const [copiedShareUrl, setCopiedShareUrl] = useState(false);
   const [copiedBadgeMd, setCopiedBadgeMd] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const generateUniqueId = () =>
+    Array.from(crypto.getRandomValues(new Uint8Array(4)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+  const openShareModal = () => {
+    setShareLinkId(generateUniqueId());
+    setCopiedShareUrl(false);
+    setCopiedBadgeMd(false);
+    setShowShareModal(true);
+  };
 
   const activeCategoryLabel =
     selectedCategory === 'custom'
@@ -114,7 +127,8 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
 
   const generateShareUrl = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
-    return `${origin}/?project=${encodeURIComponent(campaign.id)}&topic=${encodeURIComponent(selectedCategory === 'custom' ? activeCategoryLabel : selectedCategory)}`;
+    const sid = shareLinkId || generateUniqueId();
+    return `${origin}/?project=${encodeURIComponent(campaign.id)}&topic=${encodeURIComponent(selectedCategory === 'custom' ? activeCategoryLabel : selectedCategory)}&sid=${sid}`;
   };
 
   const copyShareLink = () => {
@@ -151,7 +165,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
         <button
           type="button"
           className="btn-ask-feedback"
-          onClick={() => setShowShareModal(true)}
+          onClick={openShareModal}
         >
           📋 SHARE FEEDBACK LINK
         </button>
