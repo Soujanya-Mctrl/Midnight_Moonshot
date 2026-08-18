@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
 
-interface FeedbackStudioProps {
-  onFeedbackSubmitted?: (record: {
-    hash: string;
-    rating: number;
-    category: string;
-    commentPreview: string;
-    timestamp: string;
-  }) => void;
+export interface FeedbackSubmissionRecord {
+  hash: string;
+  rating: number;
+  category: string;
+  projectName: string;
+  commentPreview: string;
+  timestamp: string;
 }
 
+interface FeedbackStudioProps {
+  onFeedbackSubmitted?: (record: FeedbackSubmissionRecord) => void;
+}
+
+const PRESET_PROJECTS = [
+  { id: '1am-wallet', name: '1AM Midnight Wallet' },
+  { id: 'compact-dx', name: 'Compact Language Toolchain' },
+  { id: 'proofstation', name: 'ProofStation Prover API' },
+  { id: 'midnight-indexer', name: 'Midnight Indexer v4' },
+  { id: 'custom', name: '+ Enter Custom dApp / Campaign...' },
+];
+
 const CATEGORIES = [
+  { id: 'any', label: 'Any Category' },
   { id: 'dx', label: 'Developer Experience' },
   { id: 'privacy', label: 'Privacy & Cryptography' },
   { id: 'ui', label: 'Interface & Usability' },
   { id: 'network', label: 'Network & Indexer' },
+  { id: 'defi', label: 'DeFi & Payments' },
   { id: 'general', label: 'General Ecosystem' },
+  { id: 'custom', label: '+ Custom Topic...' },
 ];
 
 const RATING_LABELS: Record<number, string> = {
@@ -41,26 +55,59 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
     network,
   } = useMidnight();
 
+  const [selectedPreset, setSelectedPreset] = useState<string>('1am-wallet');
+  const [customProjectName, setCustomProjectName] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('any');
+  const [customCategoryName, setCustomCategoryName] = useState<string>('');
   const [rating, setRating] = useState<number>(5);
-  const [selectedCategory, setSelectedCategory] = useState<string>('dx');
   const [comment, setComment] = useState<string>('');
   const [copiedHash, setCopiedHash] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [shareTopic, setShareTopic] = useState('Developer Experience');
-  const [copiedShareUrl, setCopiedShareUrl] = useState(false);
 
-  // Read URL query parameters to pre-fill topic if shared
+  // Share link modal
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false);
+  const [copiedBadgeMd, setCopiedBadgeMd] = useState(false);
+
+  // Compute active target project name
+  const targetProjectName =
+    selectedPreset === 'custom'
+      ? customProjectName.trim() || 'Custom Project'
+      : PRESET_PROJECTS.find((p) => p.id === selectedPreset)?.name || '1AM Midnight Wallet';
+
+  // Compute active category label
+  const activeCategoryLabel =
+    selectedCategory === 'custom'
+      ? customCategoryName.trim() || 'Custom Topic'
+      : CATEGORIES.find((c) => c.id === selectedCategory)?.label || 'Any Category';
+
+  // Read URL query parameters to pre-fill form fields
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const projectParam = params.get('project');
       const topicParam = params.get('topic');
+
+      if (projectParam) {
+        const foundPreset = PRESET_PROJECTS.find(
+          (p) => p.id.toLowerCase() === projectParam.toLowerCase() || p.name.toLowerCase() === projectParam.toLowerCase()
+        );
+        if (foundPreset && foundPreset.id !== 'custom') {
+          setSelectedPreset(foundPreset.id);
+        } else {
+          setSelectedPreset('custom');
+          setCustomProjectName(decodeURIComponent(projectParam));
+        }
+      }
+
       if (topicParam) {
-        const found = CATEGORIES.find(
+        const foundCat = CATEGORIES.find(
           (c) => c.label.toLowerCase() === topicParam.toLowerCase() || c.id === topicParam.toLowerCase()
         );
-        if (found) {
-          setSelectedCategory(found.id);
-          setShareTopic(found.label);
+        if (foundCat && foundCat.id !== 'custom') {
+          setSelectedCategory(foundCat.id);
+        } else {
+          setSelectedCategory('custom');
+          setCustomCategoryName(decodeURIComponent(topicParam));
         }
       }
     }
@@ -72,12 +119,12 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
 
     const txHash = await submitAnonymousFeedback(rating, comment);
     if (txHash) {
-      const catObj = CATEGORIES.find((c) => c.id === selectedCategory);
       if (onFeedbackSubmitted) {
         onFeedbackSubmitted({
           hash: txHash,
           rating,
-          category: catObj ? catObj.label : 'General',
+          category: activeCategoryLabel,
+          projectName: targetProjectName,
           commentPreview: comment.trim() ? `${comment.trim().substring(0, 48)}...` : 'Confidential contribution',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         });
@@ -95,13 +142,26 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
 
   const generateShareUrl = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
-    return `${origin}/?topic=${encodeURIComponent(shareTopic)}`;
+    const projSlug = selectedPreset === 'custom' ? targetProjectName : selectedPreset;
+    const catSlug = selectedCategory === 'custom' ? activeCategoryLabel : selectedCategory;
+    return `${origin}/?project=${encodeURIComponent(projSlug)}&topic=${encodeURIComponent(catSlug)}`;
   };
 
   const copyShareLink = () => {
     navigator.clipboard.writeText(generateShareUrl());
     setCopiedShareUrl(true);
     setTimeout(() => setCopiedShareUrl(false), 2000);
+  };
+
+  const getBadgeMarkdown = () => {
+    const shareUrl = generateShareUrl();
+    return `[![Midnight Feedback](https://img.shields.io/badge/Midnight_ZK-Feedback-38bdf8?style=flat&logo=shield)](${shareUrl})`;
+  };
+
+  const copyBadgeMarkdown = () => {
+    navigator.clipboard.writeText(getBadgeMarkdown());
+    setCopiedBadgeMd(true);
+    setTimeout(() => setCopiedBadgeMd(false), 2000);
   };
 
   return (
@@ -114,7 +174,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           <span>WITHOUT IDENTITY.</span>
         </h1>
         <p className="hero-subtext">
-          Submit verifiable sentiment metrics compiled locally into zero-knowledge proofs. Public ledgers aggregate total satisfaction without linking submitter wallet addresses.
+          Submit verifiable sentiment metrics compiled locally into zero-knowledge proofs. Public ledgers aggregate satisfaction scores without linking submitter wallet addresses.
         </p>
 
         <div className="hero-action-buttons">
@@ -123,7 +183,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
             className="btn-ask-feedback"
             onClick={() => setShowShareModal(true)}
           >
-            📋 ASK FOR FEEDBACK / SHARE LINK
+            📋 ASK FOR FEEDBACK / SHARE CAMPAIGN LINK
           </button>
         </div>
       </div>
@@ -133,22 +193,32 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
         <div className="modal-backdrop" onClick={() => setShowShareModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">COLLECT ANONYMOUS FEEDBACK</span>
+              <span className="modal-title">SHARE FEEDBACK CAMPAIGN</span>
               <button type="button" className="btn-modal-close" onClick={() => setShowShareModal(false)}>✕</button>
             </div>
             <p className="modal-description">
-              Share this link with your community, DAO members, or users. Their feedback ratings will be verified by Zero-Knowledge proofs without ever revealing their wallet addresses.
+              Share this dedicated link with your users or DAO members. Their feedback will be submitted with client-side Zero-Knowledge proofs with zero gas fees.
             </p>
 
             <div className="input-block">
-              <label className="input-label">CAMPAIGN / TOPIC</label>
+              <label className="input-label">CAMPAIGN TARGET</label>
+              <input
+                type="text"
+                readOnly
+                className="share-url-input"
+                value={targetProjectName}
+              />
+            </div>
+
+            <div className="input-block">
+              <label className="input-label">CATEGORY / TOPIC</label>
               <select
                 className="protocol-select"
-                value={shareTopic}
-                onChange={(e) => setShareTopic(e.target.value)}
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
               >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.id} value={cat.label}>{cat.label}</option>
+                {CATEGORIES.filter((c) => c.id !== 'custom').map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
                 ))}
               </select>
             </div>
@@ -168,8 +238,23 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
               </div>
             </div>
 
+            <div className="input-block">
+              <label className="input-label">README / GITHUB BADGE</label>
+              <div className="share-url-row">
+                <input
+                  type="text"
+                  readOnly
+                  className="share-url-input"
+                  value={getBadgeMarkdown()}
+                />
+                <button type="button" className="btn-copy-url" onClick={copyBadgeMarkdown}>
+                  {copiedBadgeMd ? 'COPIED ✓' : 'COPY MARKDOWN'}
+                </button>
+              </div>
+            </div>
+
             <div className="modal-privacy-note">
-              🛡️ <strong>Zero-Knowledge Guarantee</strong>: Respondents will pay 0 gas fees (sponsored by ProofStation) and their identities will remain 100% confidential.
+              🛡️ <strong>Zero-Knowledge Guarantee</strong>: Respondents pay 0 gas fees (sponsored by ProofStation) and their identities remain 100% confidential.
             </div>
           </div>
         </div>
@@ -177,7 +262,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
 
       {/* Spatial Composition Grid */}
       <div className="spatial-grid">
-        {/* Left Column: Feedback Form */}
+        {/* Left Column: Form-Based Feedback Input */}
         <div className="form-panel">
           <div className="panel-bar">
             <span className="panel-bar-title">SUBMISSION PARAMETERS</span>
@@ -185,30 +270,69 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           </div>
 
           <form onSubmit={handleSubmit} className="protocol-form">
-            {/* Category Segmented Row */}
+            {/* Form Field 1: Target Product / dApp Dropdown */}
             <div className="input-block">
-              <label className="input-label">TOPIC CATEGORY</label>
+              <label className="input-label">TARGET PRODUCT / DAPP</label>
+              <select
+                className="protocol-select"
+                value={selectedPreset}
+                onChange={(e) => setSelectedPreset(e.target.value)}
+              >
+                {PRESET_PROJECTS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+
+              {/* Inline Custom Product Name if chosen */}
+              {selectedPreset === 'custom' && (
+                <div style={{ marginTop: '6px' }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your dApp, contract, or product name..."
+                    className="protocol-input"
+                    value={customProjectName}
+                    onChange={(e) => setCustomProjectName(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Form Field 2: Topic Category */}
+            <div className="input-block">
+              <label className="input-label">FEEDBACK TOPIC / CATEGORY</label>
               <div className="segmented-grid">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     className={`segment-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setSelectedCategory(cat.id);
-                      setShareTopic(cat.label);
-                    }}
+                    onClick={() => setSelectedCategory(cat.id)}
                   >
                     {cat.label}
                   </button>
                 ))}
               </div>
+
+              {/* Inline Custom Category if chosen */}
+              {selectedCategory === 'custom' && (
+                <div style={{ marginTop: '6px' }}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your custom topic (e.g. Smart Contracts, Governance, Security)..."
+                    className="protocol-input"
+                    value={customCategoryName}
+                    onChange={(e) => setCustomCategoryName(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Rating Selector */}
+            {/* Form Field 3: Rating Selector */}
             <div className="input-block">
               <div className="input-label-split">
-                <label className="input-label">SATISFACTION SCORE</label>
+                <label className="input-label">SATISFACTION RATING</label>
                 <span className="score-desc">{rating} / 5 • {RATING_LABELS[rating]}</span>
               </div>
               <div className="rating-grid">
@@ -226,7 +350,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
               </div>
             </div>
 
-            {/* Comment Area */}
+            {/* Form Field 4: Comment / Memo */}
             <div className="input-block">
               <div className="input-label-split">
                 <label className="input-label">CONFIDENTIAL MEMO</label>
@@ -236,13 +360,13 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
                 className="protocol-textarea"
                 rows={3}
                 maxLength={280}
-                placeholder="Provide feedback details (Executed solely in client memory as a private local witness)..."
+                placeholder={`Provide feedback details for ${targetProjectName} (Processed in client memory as a private witness)...`}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
               />
             </div>
 
-            {/* Error Message with Dismiss */}
+            {/* Error Alert Box */}
             {error && (
               <div className="protocol-alert-error">
                 <div className="alert-content">
@@ -272,7 +396,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
               </div>
             )}
 
-            {/* Submit CTA */}
+            {/* Form Actions */}
             <div className="form-actions-row">
               {isConnected ? (
                 <button
@@ -280,7 +404,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
                   className="btn-protocol-primary"
                   disabled={isCallingCircuit}
                 >
-                  {isCallingCircuit ? 'GENERATING ZK PROOF...' : 'SUBMIT WITH ZK PROOF'}
+                  {isCallingCircuit ? 'GENERATING ZK PROOF...' : `SUBMIT PROOF FOR ${targetProjectName.toUpperCase()}`}
                 </button>
               ) : (
                 <button
@@ -330,7 +454,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           )}
         </div>
 
-        {/* Right Column: Live Protocol Status & Cryptographic Witness Panel */}
+        {/* Right Column: Live Protocol Status & Witness Panel */}
         <div className="protocol-sidebar">
           {/* Live Dynamic Protocol Witness Panel */}
           <div className="sidebar-card">
@@ -341,12 +465,20 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
 
             <div className="witness-table">
               <div className="witness-row">
+                <span className="w-key">TARGET PRODUCT</span>
+                <span className="w-val w-active">{targetProjectName}</span>
+              </div>
+              <div className="witness-row">
+                <span className="w-key">TOPIC CATEGORY</span>
+                <span className="w-val w-active">{activeCategoryLabel}</span>
+              </div>
+              <div className="witness-row">
                 <span className="w-key">SUBMITTER IDENTITY</span>
                 <span className="w-val w-private">OFF-CHAIN [UNLINKED]</span>
               </div>
               <div className="witness-row">
                 <span className="w-key">PRIVATE WITNESS</span>
-                <span className="w-val w-active">{rating} STARS • {selectedCategory.toUpperCase()}</span>
+                <span className="w-val w-active">{rating} STARS</span>
               </div>
               <div className="witness-row">
                 <span className="w-key">ZK PROOF TYPE</span>
@@ -367,7 +499,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
             </div>
           </div>
 
-          {/* Contract Instance & In-App Deployment Panel */}
+          {/* Contract Instance Panel */}
           <div className="sidebar-card">
             <div className="sidebar-card-header">
               <span className="sidebar-title">ACTIVE CONTRACT INSTANCE</span>

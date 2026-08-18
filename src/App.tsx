@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Header, type PageId } from './components/Header';
-import { FeedbackStudio } from './components/FeedbackStudio';
-import { MetricsDashboard } from './components/MetricsDashboard';
-import { PrivacyInspector } from './components/PrivacyInspector';
-import { LiveFeedStream, type FeedItem } from './components/LiveFeedStream';
+import { Header } from './components/Header';
+import { CampaignSelector, type Campaign } from './components/CampaignSelector';
+import { CampaignDashboard } from './components/CampaignDashboard';
+import type { FeedItem } from './components/LiveFeedStream';
 import './App.css';
 
 const ACTIVITY_STORAGE_KEY = 'midnight_whisper_activity_log';
 
+// Preset campaign lookup for URL deep-linking
+const PRESET_CAMPAIGN_MAP: Record<string, Campaign> = {
+  '1am-wallet': { id: '1am-wallet', name: '1AM Midnight Wallet', description: 'Browser extension wallet for Midnight Network transactions and ZK proving.', emoji: '🌙' },
+  'compact-dx': { id: 'compact-dx', name: 'Compact Language Toolchain', description: 'Smart contract language, compiler, and developer tooling for ZK circuits.', emoji: '⚡' },
+  'proofstation': { id: 'proofstation', name: 'ProofStation Prover API', description: 'Cloud-hosted ZK proof generation service for dust-free transactions.', emoji: '🔐' },
+  'midnight-indexer': { id: 'midnight-indexer', name: 'Midnight Indexer v4', description: 'GraphQL API for querying on-chain state, blocks, and contract actions.', emoji: '📡' },
+  'midnight-explorer': { id: 'midnight-explorer', name: 'Midnight Block Explorer', description: 'Web interface for inspecting transactions, contracts, and network health.', emoji: '🔍' },
+};
+
 export function App() {
-  const [activePage, setActivePage] = useState<PageId>('submit');
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [feedItems, setFeedItems] = useState<FeedItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -25,13 +33,44 @@ export function App() {
     return [];
   });
 
-  // Check URL params on initial load
+  // Check URL params for deep-linking into a campaign
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab');
-      if (tab && ['submit', 'analytics', 'privacy', 'explorer'].includes(tab)) {
-        setActivePage(tab as PageId);
+      const projectParam = params.get('project');
+
+      if (projectParam) {
+        const presetKey = projectParam.toLowerCase();
+        if (PRESET_CAMPAIGN_MAP[presetKey]) {
+          setActiveCampaign(PRESET_CAMPAIGN_MAP[presetKey]);
+        } else {
+          // Try custom campaigns from localStorage
+          try {
+            const saved = window.localStorage.getItem('midnight_custom_campaigns');
+            const customs: Campaign[] = saved ? JSON.parse(saved) : [];
+            const found = customs.find((c) => c.id === presetKey);
+            if (found) {
+              setActiveCampaign(found);
+            } else {
+              // Create a campaign from the URL param
+              setActiveCampaign({
+                id: presetKey,
+                name: decodeURIComponent(projectParam),
+                description: 'Campaign from shared feedback link',
+                emoji: '🎯',
+                isCustom: true,
+              });
+            }
+          } catch {
+            setActiveCampaign({
+              id: presetKey,
+              name: decodeURIComponent(projectParam),
+              description: 'Campaign from shared feedback link',
+              emoji: '🎯',
+              isCustom: true,
+            });
+          }
+        }
       }
     }
   }, []);
@@ -57,37 +96,46 @@ export function App() {
     }
   };
 
+  const handleSelectCampaign = (campaign: Campaign) => {
+    setActiveCampaign(campaign);
+    // Update URL without page reload
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('project', campaign.id);
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleBackToCampaigns = () => {
+    setActiveCampaign(null);
+    // Clean URL
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('project');
+      url.searchParams.delete('topic');
+      window.history.pushState({}, '', url.pathname);
+    }
+  };
+
   return (
     <div className="site-layout">
       {/* Top Navbar */}
-      <Header activePage={activePage} setActivePage={setActivePage} />
+      <Header campaignActive={!!activeCampaign} />
 
-      {/* Centered Main Content */}
+      {/* Main Content */}
       <main className="main-content-centered">
         <div className="page-container">
-          {activePage === 'submit' && (
+          {!activeCampaign ? (
             <div className="view-fade-in">
-              <FeedbackStudio onFeedbackSubmitted={handleFeedbackSubmitted} />
+              <CampaignSelector onSelectCampaign={handleSelectCampaign} />
             </div>
-          )}
-
-          {activePage === 'analytics' && (
+          ) : (
             <div className="view-fade-in">
-              <MetricsDashboard />
-            </div>
-          )}
-
-          {activePage === 'privacy' && (
-            <div className="view-fade-in">
-              <PrivacyInspector />
-            </div>
-          )}
-
-          {activePage === 'explorer' && (
-            <div className="view-fade-in">
-              <LiveFeedStream
-                items={feedItems}
-                onGoToSubmit={() => setActivePage('submit')}
+              <CampaignDashboard
+                campaign={activeCampaign}
+                onBack={handleBackToCampaigns}
+                feedItems={feedItems}
+                onFeedbackSubmitted={handleFeedbackSubmitted}
                 onClearActivity={handleClearActivity}
               />
             </div>
@@ -95,15 +143,14 @@ export function App() {
         </div>
       </main>
 
-      {/* Clean Minimal Footer */}
+      {/* Footer */}
       <footer className="site-footer">
         <div className="footer-inner">
           <span className="footer-copy">Midnight Whisper • Zero-Knowledge Anonymous Feedback Protocol</span>
           <div className="footer-links">
-            <button type="button" onClick={() => setActivePage('submit')} className="footer-link">Feedback</button>
-            <button type="button" onClick={() => setActivePage('analytics')} className="footer-link">Analytics</button>
-            <button type="button" onClick={() => setActivePage('privacy')} className="footer-link">Privacy</button>
-            <button type="button" onClick={() => setActivePage('explorer')} className="footer-link">Activity</button>
+            <a href="https://midnight.network" target="_blank" rel="noreferrer" className="footer-link">Midnight Network</a>
+            <a href="https://docs.midnight.network" target="_blank" rel="noreferrer" className="footer-link">Documentation</a>
+            <a href="https://explorer.preview.midnight.network" target="_blank" rel="noreferrer" className="footer-link">Explorer</a>
           </div>
         </div>
       </footer>

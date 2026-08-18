@@ -153,6 +153,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
   });
   const [isDeploying, setIsDeploying] = useState(false);
   const [isCallingCircuit, setIsCallingCircuit] = useState(false);
+  const [provingStep, setProvingStep] = useState<string | null>(null);
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [connectedAPI, setConnectedAPI] = useState<any>(null);
 

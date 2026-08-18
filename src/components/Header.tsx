@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
 
-export type PageId = 'submit' | 'analytics' | 'privacy' | 'explorer';
-
 interface HeaderProps {
-  activePage: PageId;
-  setActivePage: (page: PageId) => void;
+  campaignActive?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => {
+export const Header: React.FC<HeaderProps> = ({ campaignActive }) => {
   const {
     network,
     isConnected,
@@ -21,13 +18,6 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
   } = useMidnight();
 
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
-
-  const navItems: { id: PageId; label: string }[] = [
-    { id: 'submit', label: 'Submit' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'privacy', label: 'Protocol' },
-    { id: 'explorer', label: 'Activity' },
-  ];
 
   return (
     <header className="protocol-header">
@@ -43,21 +33,6 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="header-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-link-btn ${activePage === item.id ? 'active' : ''}`}
-              onClick={() => setActivePage(item.id)}
-            >
-              {item.label}
-              {activePage === item.id && <span className="nav-active-bar" />}
-            </button>
-          ))}
-        </nav>
-
         {/* Right Actions */}
         <div className="header-right-group">
           {contractAddress && (
@@ -69,6 +44,10 @@ export const Header: React.FC<HeaderProps> = ({ activePage, setActivePage }) => 
             >
               Explorer ↗
             </a>
+          )}
+
+          {isConnected && (
+            <span className="header-network-badge">{network}</span>
           )}
 
           {!isConnected ? (

@@ -5,6 +5,7 @@ export interface FeedItem {
   hash: string;
   rating: number;
   category: string;
+  projectName?: string;
   commentPreview: string;
   timestamp: string;
 }
@@ -43,7 +44,7 @@ export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({
           )}
         </div>
         <p className="hero-subtext">
-          Zero-knowledge feedback proofs submitted from your browser session.
+          Zero-knowledge feedback proofs submitted from your browser session across ecosystem projects.
         </p>
       </div>
 
@@ -68,6 +69,7 @@ export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({
         <div className="activity-table">
           <div className="table-header-row">
             <span className="col-score">SCORE</span>
+            <span className="col-proj">TARGET PROJECT</span>
             <span className="col-memo">CONFIDENTIAL MEMO</span>
             <span className="col-cat">CATEGORY</span>
             <span className="col-tx">PROOF HASH</span>
@@ -76,6 +78,7 @@ export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({
           {items.map((item, idx) => (
             <div key={idx} className="table-data-row">
               <span className="col-score score-badge">{item.rating} ★</span>
+              <span className="col-proj proj-badge">{item.projectName || '1AM Midnight Wallet'}</span>
               <span className="col-memo memo-text">"{item.commentPreview}"</span>
               <span className="col-cat cat-tag">{item.category}</span>
               <span className="col-tx tx-code" title={item.hash}>
