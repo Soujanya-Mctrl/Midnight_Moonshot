@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header, type PageId } from './components/Header';
 import { FeedbackStudio } from './components/FeedbackStudio';
 import { MetricsDashboard } from './components/MetricsDashboard';
@@ -6,27 +6,55 @@ import { PrivacyInspector } from './components/PrivacyInspector';
 import { LiveFeedStream, type FeedItem } from './components/LiveFeedStream';
 import './App.css';
 
+const ACTIVITY_STORAGE_KEY = 'midnight_whisper_activity_log';
+
 export function App() {
   const [activePage, setActivePage] = useState<PageId>('submit');
-  const [feedItems, setFeedItems] = useState<FeedItem[]>([
-    {
-      hash: '0d60f46fac2086100035ce13375095fb6fce3c85d665c5c500720ca630f18ba9',
-      rating: 5,
-      category: 'Developer Experience',
-      commentPreview: 'Compact circuit proving is fast and reliable.',
-      timestamp: '5 mins ago',
-    },
-    {
-      hash: '4a19b88e170020bc88e17a521a04f8dbd5244d63a59d8fbc2c9fc7ea521a04f8',
-      rating: 4,
-      category: 'Privacy & Security',
-      commentPreview: 'Verified zero-linkability — submitter address is hidden.',
-      timestamp: '12 mins ago',
-    },
-  ]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = window.localStorage.getItem(ACTIVITY_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {
+        // ignore storage parse errors
+      }
+    }
+    return [];
+  });
+
+  // Check URL params on initial load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['submit', 'analytics', 'privacy', 'explorer'].includes(tab)) {
+        setActivePage(tab as PageId);
+      }
+    }
+  }, []);
 
   const handleFeedbackSubmitted = (record: FeedItem) => {
-    setFeedItems((prev) => [record, ...prev]);
+    setFeedItems((prev) => {
+      const updated = [record, ...prev];
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(updated.slice(0, 50)));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleClearActivity = () => {
+    setFeedItems([]);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+    }
   };
 
   return (
@@ -57,7 +85,11 @@ export function App() {
 
           {activePage === 'explorer' && (
             <div className="view-fade-in">
-              <LiveFeedStream items={feedItems} />
+              <LiveFeedStream
+                items={feedItems}
+                onGoToSubmit={() => setActivePage('submit')}
+                onClearActivity={handleClearActivity}
+              />
             </div>
           )}
         </div>

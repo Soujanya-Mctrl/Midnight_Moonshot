@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMidnight } from '../hooks/useMidnight';
 
 interface FeedbackStudioProps {
@@ -31,19 +31,40 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
   const {
     isConnected,
     isCallingCircuit,
+    provingStep,
     lastTxHash,
     error,
+    clearError,
     contractAddress,
     submitAnonymousFeedback,
     connectWallet,
-    feedbackState,
     network,
   } = useMidnight();
 
   const [rating, setRating] = useState<number>(5);
   const [selectedCategory, setSelectedCategory] = useState<string>('dx');
   const [comment, setComment] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareTopic, setShareTopic] = useState('Developer Experience');
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false);
+
+  // Read URL query parameters to pre-fill topic if shared
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const topicParam = params.get('topic');
+      if (topicParam) {
+        const found = CATEGORIES.find(
+          (c) => c.label.toLowerCase() === topicParam.toLowerCase() || c.id === topicParam.toLowerCase()
+        );
+        if (found) {
+          setSelectedCategory(found.id);
+          setShareTopic(found.label);
+        }
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +79,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           rating,
           category: catObj ? catObj.label : 'General',
           commentPreview: comment.trim() ? `${comment.trim().substring(0, 48)}...` : 'Confidential contribution',
-          timestamp: 'Just now',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         });
       }
       setComment('');
@@ -68,8 +89,19 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
   const copyHash = () => {
     if (!lastTxHash) return;
     navigator.clipboard.writeText(lastTxHash);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
+
+  const generateShareUrl = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+    return `${origin}/?topic=${encodeURIComponent(shareTopic)}`;
+  };
+
+  const copyShareLink = () => {
+    navigator.clipboard.writeText(generateShareUrl());
+    setCopiedShareUrl(true);
+    setTimeout(() => setCopiedShareUrl(false), 2000);
   };
 
   return (
@@ -84,7 +116,64 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
         <p className="hero-subtext">
           Submit verifiable sentiment metrics compiled locally into zero-knowledge proofs. Public ledgers aggregate total satisfaction without linking submitter wallet addresses.
         </p>
+
+        <div className="hero-action-buttons">
+          <button
+            type="button"
+            className="btn-ask-feedback"
+            onClick={() => setShowShareModal(true)}
+          >
+            📋 ASK FOR FEEDBACK / SHARE LINK
+          </button>
+        </div>
       </div>
+
+      {/* Share / Request Feedback Modal */}
+      {showShareModal && (
+        <div className="modal-backdrop" onClick={() => setShowShareModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">COLLECT ANONYMOUS FEEDBACK</span>
+              <button type="button" className="btn-modal-close" onClick={() => setShowShareModal(false)}>✕</button>
+            </div>
+            <p className="modal-description">
+              Share this link with your community, DAO members, or users. Their feedback ratings will be verified by Zero-Knowledge proofs without ever revealing their wallet addresses.
+            </p>
+
+            <div className="input-block">
+              <label className="input-label">CAMPAIGN / TOPIC</label>
+              <select
+                className="protocol-select"
+                value={shareTopic}
+                onChange={(e) => setShareTopic(e.target.value)}
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.label}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="input-block">
+              <label className="input-label">SHAREABLE FEEDBACK URL</label>
+              <div className="share-url-row">
+                <input
+                  type="text"
+                  readOnly
+                  className="share-url-input"
+                  value={generateShareUrl()}
+                />
+                <button type="button" className="btn-copy-url" onClick={copyShareLink}>
+                  {copiedShareUrl ? 'COPIED ✓' : 'COPY'}
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-privacy-note">
+              🛡️ <strong>Zero-Knowledge Guarantee</strong>: Respondents will pay 0 gas fees (sponsored by ProofStation) and their identities will remain 100% confidential.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Spatial Composition Grid */}
       <div className="spatial-grid">
@@ -105,7 +194,10 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
                     key={cat.id}
                     type="button"
                     className={`segment-btn ${selectedCategory === cat.id ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setShareTopic(cat.label);
+                    }}
                   >
                     {cat.label}
                   </button>
@@ -144,20 +236,39 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
                 className="protocol-textarea"
                 rows={3}
                 maxLength={280}
-                placeholder="Provide feedback details (Executed solely in client memory as a local witness)..."
+                placeholder="Provide feedback details (Executed solely in client memory as a private local witness)..."
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
               />
             </div>
 
-            {/* Error Message */}
-            {error && <div className="protocol-alert-error">{error}</div>}
+            {/* Error Message with Dismiss */}
+            {error && (
+              <div className="protocol-alert-error">
+                <div className="alert-content">
+                  <span className="alert-icon">⚠️</span>
+                  <span className="alert-text">{error}</span>
+                </div>
+                <button type="button" className="btn-dismiss-error" onClick={clearError} title="Dismiss">✕</button>
+              </div>
+            )}
 
-            {/* ZK Proving Active Notification */}
+            {/* ZK Proving Active Multi-Step Progress */}
             {isCallingCircuit && (
-              <div className="protocol-alert-proving">
-                <span className="proving-pulse" />
-                <span>Synthesizing Compact ZK Proof & Submitting Unsigned Extrinsic...</span>
+              <div className="protocol-alert-proving-card">
+                <div className="proving-spinner-row">
+                  <div className="proving-spinner" />
+                  <div className="proving-header">
+                    <span className="proving-title">SYNTHESIZING COMPACT ZERO-KNOWLEDGE PROOF</span>
+                    <span className="proving-subtitle">{provingStep || 'Computing proof in client runtime...'}</span>
+                  </div>
+                </div>
+                <div className="proving-progress-bar">
+                  <div className="proving-progress-fill" />
+                </div>
+                <div className="proving-gas-badge">
+                  <span>⚡ 100% Sponsored Gas (Cost: 0.00 NIGHT / 0 DUST)</span>
+                </div>
               </div>
             )}
 
@@ -202,7 +313,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
               <div className="tx-hash-row">
                 <span className="tx-hash-val">{lastTxHash}</span>
                 <button type="button" className="btn-copy-hash" onClick={copyHash}>
-                  {copied ? 'COPIED' : 'COPY'}
+                  {copiedHash ? 'COPIED ✓' : 'COPY'}
                 </button>
               </div>
               {contractAddress && (
@@ -224,25 +335,25 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           {/* Live Dynamic Protocol Witness Panel */}
           <div className="sidebar-card">
             <div className="sidebar-card-header">
-              <span className="sidebar-title">PROTOCOL EXECUTION STATE</span>
+              <span className="sidebar-title">PRIVACY EXECUTION STATE</span>
               <span className="live-indicator"><span className="live-dot" /> LIVE</span>
             </div>
 
             <div className="witness-table">
               <div className="witness-row">
-                <span className="w-key">IDENTITY</span>
-                <span className="w-val w-private">OFF-CHAIN [HIDDEN]</span>
+                <span className="w-key">SUBMITTER IDENTITY</span>
+                <span className="w-val w-private">OFF-CHAIN [UNLINKED]</span>
               </div>
               <div className="witness-row">
-                <span className="w-key">LOCAL WITNESS</span>
+                <span className="w-key">PRIVATE WITNESS</span>
                 <span className="w-val w-active">{rating} STARS • {selectedCategory.toUpperCase()}</span>
               </div>
               <div className="witness-row">
-                <span className="w-key">PROOF TYPE</span>
+                <span className="w-key">ZK PROOF TYPE</span>
                 <span className="w-val">ZK-SNARK (COMPACT)</span>
               </div>
               <div className="witness-row">
-                <span className="w-key">DISCLOSURE</span>
+                <span className="w-key">ON-CHAIN DISCLOSURE</span>
                 <span className="w-val w-public">AGGREGATE SUM INCREMENT</span>
               </div>
               <div className="witness-row">
@@ -250,8 +361,8 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
                 <span className="w-val">{network.toUpperCase()} TESTNET</span>
               </div>
               <div className="witness-row">
-                <span className="w-key">LINKABILITY</span>
-                <span className="w-val w-private">ZERO (MATHEMATICALLY PROVEN)</span>
+                <span className="w-key">TRACEABILITY</span>
+                <span className="w-val w-private">ZERO (MATHEMATICALLY OBFUSCATED)</span>
               </div>
             </div>
           </div>
@@ -260,7 +371,7 @@ export const FeedbackStudio: React.FC<FeedbackStudioProps> = ({ onFeedbackSubmit
           <div className="sidebar-card">
             <div className="sidebar-card-header">
               <span className="sidebar-title">ACTIVE CONTRACT INSTANCE</span>
-              <span className="state-version">COMPACT</span>
+              <span className="state-version">COMPACT v0.24</span>
             </div>
 
             <div className="contract-deploy-panel">

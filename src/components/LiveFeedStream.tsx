@@ -11,30 +11,58 @@ export interface FeedItem {
 
 interface LiveFeedStreamProps {
   items: FeedItem[];
+  onGoToSubmit?: () => void;
+  onClearActivity?: () => void;
 }
 
-export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({ items }) => {
+export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({
+  items,
+  onGoToSubmit,
+  onClearActivity,
+}) => {
   const { contractAddress } = useMidnight();
 
   return (
     <div className="protocol-view-wrapper">
       <div className="protocol-hero">
         <div className="hero-eyebrow">TRANSACTION STREAM</div>
-        <h1 className="hero-headline">
-          SESSION<br />
-          <span>ACTIVITY.</span>
-        </h1>
+        <div className="hero-title-row">
+          <h1 className="hero-headline">
+            SESSION<br />
+            <span>ACTIVITY.</span>
+          </h1>
+          {items.length > 0 && onClearActivity && (
+            <button
+              type="button"
+              className="btn-clear-activity"
+              onClick={onClearActivity}
+              title="Clear stored session entries"
+            >
+              CLEAR LOG ✕
+            </button>
+          )}
+        </div>
         <p className="hero-subtext">
-          Zero-knowledge feedback proofs submitted in this browser session.
+          Zero-knowledge feedback proofs submitted from your browser session.
         </p>
       </div>
 
       {items.length === 0 ? (
         <div className="empty-protocol-state">
-          <div className="empty-title">NO RECENT SUBMISSIONS</div>
+          <div className="empty-glyph">🛡️</div>
+          <div className="empty-title">NO RECENT SUBMISSIONS IN THIS SESSION</div>
           <p className="empty-sub">
-            Submissions verified in your active session will be logged here.
+            Submissions verified with zero-knowledge proofs from your browser will be securely recorded here.
           </p>
+          {onGoToSubmit && (
+            <button
+              type="button"
+              className="btn-empty-submit"
+              onClick={onGoToSubmit}
+            >
+              + SUBMIT ANONYMOUS PROOF
+            </button>
+          )}
         </div>
       ) : (
         <div className="activity-table">
@@ -50,7 +78,11 @@ export const LiveFeedStream: React.FC<LiveFeedStreamProps> = ({ items }) => {
               <span className="col-score score-badge">{item.rating} ★</span>
               <span className="col-memo memo-text">"{item.commentPreview}"</span>
               <span className="col-cat cat-tag">{item.category}</span>
-              <span className="col-tx tx-code">{item.hash.substring(0, 10)}...{item.hash.substring(item.hash.length - 6)}</span>
+              <span className="col-tx tx-code" title={item.hash}>
+                {item.hash.length > 18
+                  ? `${item.hash.substring(0, 8)}...${item.hash.substring(item.hash.length - 6)}`
+                  : item.hash}
+              </span>
               <span className="col-action">
                 {contractAddress && (
                   <a

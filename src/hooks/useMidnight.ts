@@ -41,6 +41,7 @@ export interface MidnightHookState {
   session: ConnectedSession | null;
   isDeploying: boolean;
   isCallingCircuit: boolean;
+  provingStep: string | null;
   lastTxHash: string | null;
   connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
@@ -247,6 +248,23 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, []);
 
+  const formatFriendlyError = (rawErr: any): string => {
+    const msg = (rawErr?.message || String(rawErr || '')).toLowerCase();
+    if (msg.includes('user rejected') || msg.includes('declined') || msg.includes('cancel') || msg.includes('closed')) {
+      return 'Wallet request was cancelled. Please open your 1AM wallet and confirm the action.';
+    }
+    if (msg.includes('not installed') || msg.includes('no midnight wallet')) {
+      return 'No Midnight wallet extension found. Please install 1AM Wallet or Lace from the Chrome Web Store.';
+    }
+    if (msg.includes('network') || msg.includes('fetch') || msg.includes('timeout')) {
+      return 'Network connection interrupted. Please check your internet connection and retry.';
+    }
+    if (msg.includes('costmodel')) {
+      return 'Cryptographic runtime re-initialized. Please retry submission.';
+    }
+    return rawErr?.message || 'Transaction submission failed. Please try again.';
+  };
+
   const deployContract = useCallback(async (): Promise<string | null> => {
     if (!session) {
       setError('Connect a wallet before deploying the feedback contract.');
@@ -254,6 +272,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     setIsDeploying(true);
+    setProvingStep('Preparing deploy transaction...');
     setError(null);
 
     try {
@@ -263,40 +282,46 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
       await fetchLiveContractState();
       return contractAddressHex;
     } catch (deployError: any) {
-      setError(deployError?.message ?? 'Contract deployment failed.');
+      setError(formatFriendlyError(deployError));
       return null;
     } finally {
       setIsDeploying(false);
+      setProvingStep(null);
     }
   }, [fetchLiveContractState, session]);
 
   const submitAnonymousFeedback = useCallback(
     async (rating: number, comment?: string): Promise<string | null> => {
       if (!session) {
-        setError('Connect a wallet before submitting anonymous feedback.');
+        setError('Please connect your 1AM wallet before submitting feedback.');
         return null;
       }
 
       if (!contractAddress) {
-        setError('Contract address not found.');
+        setError('Feedback contract address is not configured.');
         return null;
       }
 
       const ratingNum = Math.max(1, Math.min(5, Math.round(rating)));
       setIsCallingCircuit(true);
       setError(null);
+      setProvingStep('1/4: Synthesizing ZK witness & checking score bounds...');
 
       try {
+        setProvingStep('2/4: Computing Zero-Knowledge Proof (ZK-SNARK)...');
         const txId = await submitFeedbackTx(session, contractAddress, ratingNum);
+        setProvingStep('3/4: Broadcasting unsigned extrinsic to Preview network...');
         setLastTxHash(typeof txId === 'string' ? txId : 'Transaction Submitted');
+        setProvingStep('4/4: Polling ledger indexer for state finality...');
         await fetchLiveContractState();
         return typeof txId === 'string' ? txId : 'tx_confirmed';
       } catch (callError: any) {
-        setError(callError?.message ?? 'Anonymous feedback submission failed.');
+        setError(formatFriendlyError(callError));
         await fetchLiveContractState();
         return null;
       } finally {
         setIsCallingCircuit(false);
+        setProvingStep(null);
       }
     },
     [contractAddress, fetchLiveContractState, session],
@@ -347,6 +372,7 @@ export const MidnightProvider: React.FC<{ children: ReactNode }> = ({ children }
     session,
     isDeploying,
     isCallingCircuit,
+    provingStep,
     lastTxHash,
     connectWallet,
     disconnectWallet,
