@@ -370,15 +370,35 @@ export async function createConnectedSession(api: any): Promise<ConnectedSession
   const midnightProvider: MidnightProvider = {
     submitTx: async (tx: any) => {
       const result = await api.submitTransaction(toHex(tx.serialize()));
-      if (typeof result === 'string' && result) {
-        return result;
+      if (typeof result === 'string' && result.trim()) {
+        return result.trim();
       }
-      if (result?.transactionId) {
+      if (result?.txHash && typeof result.txHash === 'string') {
+        return result.txHash;
+      }
+      if (result?.transactionHash && typeof result.transactionHash === 'string') {
+        return result.transactionHash;
+      }
+      if (result?.transactionId && typeof result.transactionId === 'string') {
         return result.transactionId;
       }
-      if (result?.id) {
+      if (result?.hash && typeof result.hash === 'string') {
+        return result.hash;
+      }
+      if (result?.id && typeof result.id === 'string') {
         return result.id;
       }
+
+      // Compute exact Midnight ledger transaction hash via tx.transactionHash()
+      try {
+        if (typeof tx?.transactionHash === 'function') {
+          const rawHash = tx.transactionHash();
+          return typeof rawHash === 'string' ? rawHash : toHex(rawHash);
+        }
+      } catch {
+        // fallback
+      }
+
       return toHex(tx.serialize()).slice(0, 64);
     },
   };

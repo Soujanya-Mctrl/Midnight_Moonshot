@@ -99,16 +99,24 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
     .replace(/^TARGET\s*\/\/\s*/i, 'TARGET: ')
     .replace(/^TARGET\s*:\s*/i, 'TARGET: ');
 
-  // On-chain metrics
-  const total = feedbackState?.totalResponses ?? 0;
-  const avg = feedbackState?.averageRating ?? 0;
-  const positiveRate = feedbackState?.positivePercentage ?? 0;
-  const positiveCount = feedbackState?.positiveCount ?? 0;
-
-  // Campaign-filtered feed items
+  // Filter feed items strictly for the active campaign
   const campaignFeed = feedItems.filter(
-    (item) => !item.projectName || item.projectName === campaign.name
+    (item) => item.projectName === campaign.name
   );
+
+  // Compute campaign-specific metrics
+  const campaignTotal = campaignFeed.length;
+  const campaignSum = campaignFeed.reduce((acc, item) => acc + item.rating, 0);
+  const campaignAvg = campaignTotal > 0 ? campaignSum / campaignTotal : 0;
+  const campaignPositiveCount = campaignFeed.filter((item) => item.rating >= 4).length;
+  const campaignPositiveRate = campaignTotal > 0 ? Math.round((campaignPositiveCount / campaignTotal) * 100) : 0;
+
+  // Use campaign-specific metrics if submissions exist; fallback to on-chain state only for primary target
+  const isPrimaryTarget = campaign.id === 'midnight' || campaign.name.toLowerCase().includes('midnight');
+  const total = campaignTotal > 0 ? campaignTotal : (isPrimaryTarget ? (feedbackState?.totalResponses ?? 0) : 0);
+  const avg = campaignTotal > 0 ? campaignAvg : (isPrimaryTarget ? (feedbackState?.averageRating ?? 0) : 0);
+  const positiveRate = campaignTotal > 0 ? campaignPositiveRate : (isPrimaryTarget ? (feedbackState?.positivePercentage ?? 0) : 0);
+  const positiveCount = campaignTotal > 0 ? campaignPositiveCount : (isPrimaryTarget ? (feedbackState?.positiveCount ?? 0) : 0);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -144,24 +152,13 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
   const generateShareUrl = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
     const sid = shareLinkId || generateUniqueId();
-    return `${origin}/?project=${encodeURIComponent(campaign.id)}&topic=${encodeURIComponent(selectedCategory === 'custom' ? activeCategoryLabel : selectedCategory)}&sid=${sid}`;
+    return `${origin}/?campaign=${encodeURIComponent(campaign.id)}&sid=${sid}`;
   };
 
   const copyShareLink = () => {
     navigator.clipboard.writeText(generateShareUrl());
     setCopiedShareUrl(true);
     setTimeout(() => setCopiedShareUrl(false), 2000);
-  };
-
-  const getBadgeMarkdown = () => {
-    const shareUrl = generateShareUrl();
-    return `[![Midnight Feedback](https://img.shields.io/badge/Midnight_ZK-Feedback-38bdf8?style=flat&logo=shield)](${shareUrl})`;
-  };
-
-  const copyBadgeMarkdown = () => {
-    navigator.clipboard.writeText(getBadgeMarkdown());
-    setCopiedBadgeMd(true);
-    setTimeout(() => setCopiedBadgeMd(false), 2000);
   };
 
   return (
@@ -198,17 +195,17 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
         <div className="modal-backdrop" onClick={() => setShowShareModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">SHARE FEEDBACK LINK</span>
+              <span className="modal-title">SHARE CAMPAIGN LINK</span>
               <button type="button" className="btn-modal-close" onClick={() => setShowShareModal(false)}>
                 <CloseIcon size={14} />
               </button>
             </div>
             <p className="modal-description">
-              Send this link to your users to collect zero-knowledge feedback (0 gas cost for submitters).
+              Send this link to your users to collect zero-knowledge feedback for {campaign.name}.
             </p>
 
             <div className="input-block">
-              <label className="input-label">SHAREABLE FEEDBACK URL</label>
+              <label className="input-label">SHAREABLE URL</label>
               <div className="share-url-row">
                 <input type="text" readOnly className="share-url-input" value={generateShareUrl()} />
                 <button type="button" className="btn-copy-url" onClick={copyShareLink}>
@@ -221,26 +218,6 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
                     <>
                       <CopyIcon size={12} />
                       <span>COPY LINK</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="input-block">
-              <label className="input-label">README MARKDOWN BADGE</label>
-              <div className="share-url-row">
-                <input type="text" readOnly className="share-url-input" value={getBadgeMarkdown()} />
-                <button type="button" className="btn-copy-url" onClick={copyBadgeMarkdown}>
-                  {copiedBadgeMd ? (
-                    <>
-                      <CheckIcon size={12} />
-                      <span>COPIED</span>
-                    </>
-                  ) : (
-                    <>
-                      <CopyIcon size={12} />
-                      <span>COPY BADGE</span>
                     </>
                   )}
                 </button>
@@ -452,16 +429,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
               )}
             </div>
 
-            {/* Quick Share Link Section */}
-            <div className="sidebar-sub-section">
-              <span className="sidebar-sub-title">SHAREABLE LINK</span>
-              <div className="share-url-row">
-                <input type="text" readOnly className="share-url-input" value={generateShareUrl()} />
-                <button type="button" className="btn-copy-url" onClick={copyShareLink}>
-                  {copiedShareUrl ? 'COPIED' : 'COPY'}
-                </button>
-              </div>
-            </div>
+
 
             {/* Collapsible Privacy Specs Section */}
             <div className="sidebar-sub-section">

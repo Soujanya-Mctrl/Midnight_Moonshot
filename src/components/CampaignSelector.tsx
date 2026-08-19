@@ -81,12 +81,12 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
   return (
     <div className="campaign-selector-wrapper">
       {/* Protocol Header */}
-      <div className="protocol-hero" style={{ textAlign: 'left', marginBottom: '2rem' }}>
+      <div className="protocol-hero" style={{ textAlign: 'center', marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div className="hero-eyebrow">MIDNIGHT NETWORK • COMPACT ZK-SNARK</div>
-        <h1 className="hero-headline" style={{ fontSize: '1.8rem', letterSpacing: '0.01em', fontWeight: 700, margin: '0.2rem 0 0.4rem 0', color: 'var(--text-white)' }}>
+        <h1 className="hero-headline" style={{ fontSize: '2.1rem', letterSpacing: '0.01em', fontWeight: 800, margin: '0.3rem 0 0.5rem 0', color: 'var(--text-white)' }}>
           ANONYMOUS FEEDBACK REGISTRY
         </h1>
-        <p className="hero-subtext" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+        <p className="hero-subtext" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 auto', maxWidth: '540px', lineHeight: 1.5 }}>
           Deploy evaluation targets, generate zero-knowledge share links, and collect private ratings on-chain.
         </p>
       </div>
@@ -110,18 +110,18 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
         </div>
       ) : showCreationForm ? (
         /* ═══ CAMPAIGN CREATION INTERFACE ═══ */
-        <div className="creation-panel-wrapper">
+        <div className="creation-panel-wrapper view-fade-in">
           <form onSubmit={handleCreateSubmit} className="protocol-form form-panel">
             <div className="panel-bar">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <TerminalIcon size={14} color="var(--text-white)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <TerminalIcon size={15} color="var(--text-white)" />
                 <span className="panel-bar-title">NEW CAMPAIGN TARGET</span>
               </div>
               <span className="panel-bar-meta">CIRCUIT: REGISTRY</span>
             </div>
 
             <div className="input-block">
-              <label className="input-label">PROJECT NAME</label>
+              <label className="input-label">PROJECT NAME / TARGET IDENTIFIER</label>
               <input
                 type="text"
                 required
@@ -134,7 +134,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
             </div>
 
             <div className="input-block">
-              <label className="input-label">CATEGORY</label>
+              <label className="input-label">TARGET CATEGORY</label>
               <div className="segmented-grid">
                 {CATEGORY_OPTIONS.map((cat) => (
                   <button
@@ -155,11 +155,11 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
                 </button>
               </div>
               {category === 'CUSTOM' && (
-                <div style={{ marginTop: '6px' }}>
+                <div style={{ marginTop: '8px' }}>
                   <input
                     type="text"
                     required
-                    placeholder="Category name..."
+                    placeholder="Custom category name..."
                     className="protocol-input"
                     value={customCategory}
                     onChange={(e) => setCustomCategory(e.target.value)}
@@ -169,11 +169,11 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
             </div>
 
             <div className="input-block">
-              <label className="input-label">SCOPE (OPTIONAL)</label>
+              <label className="input-label">SCOPE / FOCUS AREA (OPTIONAL)</label>
               <input
                 type="text"
                 className="protocol-input"
-                placeholder="Brief focus area..."
+                placeholder="Brief focus area or evaluation scope..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
