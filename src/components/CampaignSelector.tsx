@@ -15,6 +15,7 @@ export interface Campaign {
   description: string;
   indexCode?: string;
   isCustom?: boolean;
+  ownerAddress?: string;
 }
 
 interface CampaignSelectorProps {
@@ -31,17 +32,18 @@ const CATEGORY_OPTIONS = [
 ];
 
 export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCampaign }) => {
-  const { isConnected, connectWallet, isConnecting, network } = useMidnight();
+  const { isConnected, connectWallet, isConnecting, network, address } = useMidnight();
   const [showCreationForm, setShowCreationForm] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('DEFI PROTOCOL');
   const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
 
-  // Load user-created campaigns from localStorage
+  // Load user-created campaigns scoped to the connected wallet address
   const userCampaigns: Campaign[] = (() => {
+    if (!address) return [];
     try {
-      const saved = window.localStorage.getItem('midnight_custom_campaigns');
+      const saved = window.localStorage.getItem(`midnight_custom_campaigns_${address}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
@@ -65,14 +67,17 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
       description: description.trim() || 'Verifiable zero-knowledge feedback campaign.',
       indexCode: String(userCampaigns.length + 1).padStart(2, '0'),
       isCustom: true,
+      ownerAddress: address || undefined,
     };
 
-    // Persist to localStorage
-    try {
-      const existing: Campaign[] = userCampaigns.filter((c) => c.id !== newCampaign.id);
-      existing.unshift(newCampaign);
-      window.localStorage.setItem('midnight_custom_campaigns', JSON.stringify(existing));
-    } catch { /* ignore */ }
+    // Persist to wallet-scoped localStorage
+    if (address) {
+      try {
+        const existing: Campaign[] = userCampaigns.filter((c) => c.id !== newCampaign.id);
+        existing.unshift(newCampaign);
+        window.localStorage.setItem(`midnight_custom_campaigns_${address}`, JSON.stringify(existing));
+      } catch { /* ignore */ }
+    }
 
     setShowCreationForm(false);
     onSelectCampaign(newCampaign);
@@ -92,7 +97,23 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
       </div>
 
       {/* Wallet Gate */}
-      {showCreationForm ? (
+      {!isConnected ? (
+        <div className="campaign-wallet-gate view-fade-in">
+          <div className="gate-tag">AUTHENTICATION REQUIRED</div>
+          <h3 className="gate-title">CONNECT WALLET TO ACCESS CAMPAIGNS</h3>
+          <p className="gate-desc">
+            Link 1AM Wallet or Lace to manage evaluation targets and view your wallet's campaigns on Midnight {network.toUpperCase()}.
+          </p>
+          <button
+            type="button"
+            className="btn-protocol-primary"
+            onClick={() => connectWallet()}
+            disabled={isConnecting}
+          >
+            {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
+          </button>
+        </div>
+      ) : showCreationForm ? (
         /* ═══ CAMPAIGN CREATION INTERFACE ═══ */
         <div className="creation-panel-wrapper view-fade-in">
           <form onSubmit={handleCreateSubmit} className="protocol-form form-panel">

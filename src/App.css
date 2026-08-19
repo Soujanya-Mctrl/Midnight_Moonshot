@@ -1758,13 +1758,56 @@ body {
 }
 
 /* ==========================================================================
-   CAMPAIGN SELECTOR GRID
+   CAMPAIGN SELECTOR GRID & WALLET GATE
    ========================================================================== */
 .campaign-selector-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
+}
+
+.campaign-wallet-gate {
+  text-align: center;
+  padding: 3.25rem 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  max-width: 520px;
+  width: 100%;
+  margin: 1.5rem auto 0 auto;
+  box-sizing: border-box;
+}
+
+.gate-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 3px 10px;
+  border-radius: 2px;
+  margin-bottom: 1rem;
+}
+
+.gate-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-white);
+  margin-bottom: 0.65rem;
+}
+
+.gate-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 420px;
+  margin: 0 auto 1.75rem auto;
+  line-height: 1.55;
 }
 
 .campaign-section-label {
