@@ -92,23 +92,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({ onSelectCamp
       </div>
 
       {/* Wallet Gate */}
-      {!isConnected ? (
-        <div className="campaign-wallet-gate">
-          <div className="gate-tag">AUTH REQUIRED</div>
-          <h3 className="gate-title">CONNECT WALLET TO CONTINUE</h3>
-          <p className="gate-desc">
-            Link 1AM Wallet or Lace to interact with Midnight {network.toUpperCase()}.
-          </p>
-          <button
-            type="button"
-            className="btn-protocol-primary"
-            onClick={() => connectWallet()}
-            disabled={isConnecting}
-          >
-            {isConnecting ? 'CONNECTING...' : 'CONNECT WALLET'}
-          </button>
-        </div>
-      ) : showCreationForm ? (
+      {showCreationForm ? (
         /* ═══ CAMPAIGN CREATION INTERFACE ═══ */
         <div className="creation-panel-wrapper view-fade-in">
           <form onSubmit={handleCreateSubmit} className="protocol-form form-panel">
