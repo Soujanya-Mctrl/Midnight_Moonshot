@@ -1,5 +1,7 @@
 # Midnight Whisper // Anonymous Feedback & Sentiment Protocol
 
+[![CI Pipeline](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml)
+
 ## Live Demo
 [https://midnightmoonshot.vercel.app](https://midnightmoonshot.vercel.app)
 
