@@ -2,8 +2,9 @@
 
 [![CI Pipeline](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Soujanya-Mctrl/Midnight_Moonshot/actions/workflows/ci.yml)
 
-## Live Demo
-[https://midnightmoonshot.vercel.app](https://midnightmoonshot.vercel.app)
+## Video Demo & Live App
+- **Demo Video**: [Watch Demo Video](https://drive.google.com/file/d/1sPxFpPAZyLoX109I2lobiN7n6u2wA2c5/view?usp=sharing)
+- **Live dApp**: [https://midnightmoonshot.vercel.app](https://midnightmoonshot.vercel.app)
 
 ## Contract Address
 | Network  | Address                                                          |
